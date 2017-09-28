@@ -63,5 +63,3 @@ class Client:
             self.socket.close()
         except:
             logging.exception("Client.close(%s)" % self)
-
-

@@ -1,5 +1,7 @@
 from socket import *
 from log import *
+import json
+TERMINATOR = "\r\n"
 
 
 class Client(object):
@@ -8,7 +10,6 @@ class Client(object):
 		super(Client, self).__init__()
 		self.server_ip = "127.0.0.1"
 		self.server_port = 8080
-		self.client_port = 34343
 		self.socket = socket(AF_INET, SOCK_STREAM)
 		self.socket.connect((self.server_ip, self.server_port))
 
@@ -27,10 +28,10 @@ class Client(object):
 	def processCreate(self, to_send):
 		return "teste"
 
-	def processList(self, to_send):
-		return "teste"
-		pass
-
+	def processList(self):
+		print ("aqui")
+		msg = {'type' : 'list'}
+		self.socket.sendall(json.dumps(msg) + TERMINATOR)
 	def processNew(self, to_send):
 		return "teste"
 		pass
@@ -55,14 +56,13 @@ class Client(object):
 		return "teste"
 		pass
 
-	def send_msg(self, function=None, message=""):
-		
-		if function in self.messageTypes:
-			to_send = {'type': function}
-			msg = self.messageTypes[function](to_send=to_send)
-			self.socket.sendall(msg)
 
-		else: 
+	def send_msg(self, function=None, message=""):
+
+		if function in self.messageTypes:
+			self.processList()
+
+		else:
 			log(logging.ERROR, 'Unknown function Client "%s"' % (function))
 			return
 
@@ -73,8 +73,8 @@ class Client(object):
 		# print 'Received', repr(data)
 
 
-		
+
 
 if __name__ == "__main__":
-	x = Client()
-	x.send_msg(function="all", message="teste")
+	clien = Client()
+	clien.send_msg(function="list", message="teste")

@@ -76,6 +76,7 @@ class ServerActions:
         client.sendResult({"result": me.id})
 
     def processList(self, data, client):
+        print ("processList print")
         log(logging.DEBUG, "%s" % json.dumps(data))
 
         user = 0  # 0 means all users
@@ -207,7 +208,7 @@ class ServerActions:
             log(logging.ERROR, "Badly formated \"status\" message: " +
                 json.dumps(data))
             client.sendResult({"error": "wrong message format"})
-        
+
         fromId = int(data['id'])
         msg = str(data["msg"])
 
