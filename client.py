@@ -4,13 +4,21 @@ from log import *
 
 class Client(object):
 	"""docstring for Client"""
-	def __init__(self):
+	def __init__(self, file_name=None):
 		super(Client, self).__init__()
+
+		# Server connection variables
 		self.server_ip = "127.0.0.1"
 		self.server_port = 8080
-		self.client_port = 34343
 		self.socket = socket(AF_INET, SOCK_STREAM)
 		self.socket.connect((self.server_ip, self.server_port))
+
+		# Cliente informations innitialization
+		if file_name == None:
+			pass
+
+		else:
+			pass
 
 
 		self.messageTypes = {
@@ -24,34 +32,34 @@ class Client(object):
 			'status': self.processStatus
 		}
 
-	def processCreate(self, to_send):
+	def processCreate(self):
 		return "teste"
 
-	def processList(self, to_send):
-		return "teste"
-		pass
-
-	def processNew(self, to_send):
+	def processList(self):
 		return "teste"
 		pass
 
-	def processAll(self, to_send):
+	def processNew(self):
 		return "teste"
 		pass
 
-	def processSend(self, to_send):
+	def processAll(self):
 		return "teste"
 		pass
 
-	def processRecv(self, to_send):
+	def processSend(self):
 		return "teste"
 		pass
 
-	def processReceipt(self, to_send):
+	def processRecv(self):
 		return "teste"
 		pass
 
-	def processStatus(self, to_send):
+	def processReceipt(self):
+		return "teste"
+		pass
+
+	def processStatus(self):
 		return "teste"
 		pass
 
@@ -73,8 +81,57 @@ class Client(object):
 		# print 'Received', repr(data)
 
 
-		
+def menu():
+	print "Chose an option: "
+	print "1 - CREATE message box"
+	print "2 - LIST message boxes"
+	print "3 - List NEW messages in message box"
+	print "4 - List ALL messages in message box"
+	print "5 - SEND a message to a message box"
+	print "6 - RECEIV a specific message from a message box"
+	print "7 - Send a message RECEIPT"
+	print "8 - Check for message reception STATUS"
+
 
 if __name__ == "__main__":
+
+
 	x = Client()
+
+	while 1:
+		menu()
+		try:
+			x = int(input("Enter a number: "))
+
+			if x == 1:
+				processCreate()
+
+			elif x == 2:
+				processList()				
+
+			elif x == 3:
+				processNew()
+
+			elif x == 4:
+				processAll()
+
+			elif x == 5:
+				processSend()
+
+			elif x == 6:
+				processRecv()
+
+			elif x == 7:
+				processReceipt()
+
+			elif x == 8:
+				processStatus()
+
+			else:
+				pass
+		except Exception as e:
+			raise
+
+
+
 	x.send_msg(function="all", message="teste")
