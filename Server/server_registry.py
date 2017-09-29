@@ -140,12 +140,12 @@ class ServerRegistry:
             user = self.getUser(uid)
 
             if user is not None:
-                return [user]
+                return [user.description]
             return None
 
         userList = []
         for k in self.users.keys():
-            userList.append(self.users[k].description)
+            userList.append({"id" : self.users[k].id, "description" : self.users[k].description })
 
         return userList
 
