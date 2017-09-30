@@ -29,14 +29,27 @@ class Client(object):
 		# Client informations innitialization
 
 		try:
-			file = open(file_name, "r")
+			file = open(
+				os.path.join(
+					os.path.realpath(
+						os.path.join(os.getcwd(), os.path.dirname(__file__))
+						), file_name
+					), 
+				"r")
+
 			self.uuid = int(file.read())
 			print self.uuid
 			file.close()
 
 		except Exception as e:
 			try:
-				file = open(file_name, "w+")
+				file = open(
+					os.path.join(
+						os.path.realpath(
+							os.path.join(os.getcwd(), os.path.dirname(__file__))
+							), file_name
+						), 
+					"w+")
 				x= randint(20, 100)
 				file.write( str(x) )
 
@@ -162,7 +175,7 @@ def menu():
 if __name__ == "__main__":
 
 
-	client = Client("A")
+	client = Client("D")
 
 	while 1:
 		menu()
