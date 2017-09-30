@@ -31,7 +31,8 @@ class Client(object):
 		try:
 			file = open(file_name, "r")
 			self.uuid = int(file.read())
-			file.close()	
+			print self.uuid
+			file.close()
 
 		except Exception as e:
 			try:
@@ -40,7 +41,7 @@ class Client(object):
 				file.write( str(x) )
 
 				self.uuid = x
-				
+
 				file.close()
 
 			except Exception as e:
@@ -57,7 +58,7 @@ class Client(object):
 		self.socket.sendall(json.dumps(message) + TERMINATOR)
 
 	def processCreate(self):
-		message = { 'type' : 'create', 
+		message = { 'type' : 'create',
 			   	    'uuid' : self.uuid
 			  	  }
 
@@ -73,9 +74,24 @@ class Client(object):
 
 
 	def processList(self):
-		message = {'type' : 'list'}
-		self.send_to_server(message)  # Simplifiquei isto velho
+		print "Write an user id or just press enter: "
+		try:
+			uid = int(input("Opt: "))
+			message = {'type' : 'list', 'id' : uid}
+		except Exception as e:
+			print("List all users")
+			message = {'type' : 'list'}
+		self.send_to_server(message)
+		response = json.loads(self.socket.recv(1024))
 
+		if response.get('error'):
+			error(response.get('error'))
+		else:
+			try:
+				for x in response.get('result'):
+					print x
+			except Exception as e:
+				print "Id does not exist"
 		return
 
 
@@ -99,9 +115,19 @@ class Client(object):
 
 
 	def processAll(self):
-		return "teste"
-		pass
-
+		print "Write an user id : "
+		try:
+			uid = int(input("Opt: "))
+			message = {'type' : 'all', 'id' : uid}
+			self.send_to_server(message)
+			response = json.loads(self.socket.recv(1024))
+			if response.get('error'):
+				error(response.get('error'))
+			else:
+				print response
+		except Exception as e:
+			print("Id must be an integer")
+		return
 	def processSend(self):
 		return "teste"
 		pass
@@ -146,13 +172,13 @@ if __name__ == "__main__":
 			x = int(input("Opt: "))
 		except Exception as e:
 			print("Must be an integer")
-			
+
 
 		if x == 1:
 			client.processCreate()
 
 		elif x == 2:
-			client.processList()				
+			client.processList()
 
 		elif x == 3:
 			result = get_int(question = "User ID? ")
@@ -186,7 +212,7 @@ if __name__ == "__main__":
 
 
 
-# Might be needed 
+# Might be needed
 
 """
 
