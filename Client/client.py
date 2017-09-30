@@ -7,6 +7,11 @@ from random import randint
 
 TERMINATOR = "\r\n"
 
+def get_int(question):
+	try:
+		return int(input(question))
+	except:
+		return None
 
 
 class Client(object):
@@ -32,7 +37,7 @@ class Client(object):
 			try:
 				file = open(file_name, "w+")
 				x= randint(20, 100)
-				file.write( 2 )
+				file.write( str(x) )
 
 				self.uuid = x
 				
@@ -60,10 +65,10 @@ class Client(object):
 		response = json.loads(self.socket.recv(1024))
 
 		if response.get('error'):
-			error(response.get('error'))
+			log_error(response.get('error'))
 
 		else:
-			success("Message box created successfully :)")
+			log_success("Message box created successfully :)")
 
 
 
@@ -74,9 +79,24 @@ class Client(object):
 		return
 
 
-	def processNew(self, to_send):
-		return "teste"
-		pass
+	def processNew(self, user_id):
+		message = { 'type' : 'new', 
+	   	    		'id' : user_id
+	  	  		  }
+		
+		self.send_to_server(message)
+		response = json.loads(self.socket.recv(1024))
+
+		if response.get('error'):
+			log_error(response.get('error'))
+
+		elif len(response.get('result')) == 0:
+			log_info("No new messages to show")
+
+		else:
+			for x in response.get('result'):
+				print x
+
 
 	def processAll(self):
 		return "teste"
@@ -135,7 +155,8 @@ if __name__ == "__main__":
 			client.processList()				
 
 		elif x == 3:
-			client.processNew()
+			result = get_int(question = "User ID? ")
+			client.processNew(result) if result else log_error("Invalid Value")
 
 		elif x == 4:
 			client.processAll()
