@@ -32,7 +32,7 @@ class Client(object):
 			file = open(
 				os.path.join(
 					os.path.realpath(
-						os.path.join(os.getcwd(), os.path.dirname(__file__))
+						os.path.join(os.getcwd(), os.path.dirname(__file__), "clients")
 						), file_name
 					), 
 				"r")
@@ -46,7 +46,7 @@ class Client(object):
 				file = open(
 					os.path.join(
 						os.path.realpath(
-							os.path.join(os.getcwd(), os.path.dirname(__file__))
+							os.path.join(os.getcwd(), os.path.dirname(__file__), "clients")
 							), file_name
 						), 
 					"w+")
@@ -175,7 +175,7 @@ def menu():
 if __name__ == "__main__":
 
 
-	client = Client("D")
+	client = Client("R")
 
 	while 1:
 		menu()
