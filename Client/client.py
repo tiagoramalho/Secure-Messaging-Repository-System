@@ -141,9 +141,19 @@ class Client(object):
 		except Exception as e:
 			print("Id must be an integer")
 		return
-	def Send(self):
-		return "teste"
-		pass
+
+	def Send(self, dst, msg):
+		message = { 'type'	: 'send', 
+	   	    		'src'	: self.uuid,  # Tenho duvidas nisto
+	   	    		'dst'	: dst,
+	   	    		'msg'	: msg,
+	   	    		'copy'	: msg
+	  	  		  }
+
+	  	self.send_to_server(message)
+		response = json.loads(self.socket.recv(1024))
+		print response
+
 
 	def Recv(self):
 		return "teste"
@@ -201,7 +211,14 @@ if __name__ == "__main__":
 			client.All()
 
 		elif x == 5:
-			client.Send()
+
+			dst = get_int(question = "Destination User ID? ")
+			if dst == None:
+				log_error("Invalid Value")
+			
+			msg = str(raw_input("Message? "))
+
+			client.Send(dst, msg)
 
 		elif x == 6:
 			client.Recv()
