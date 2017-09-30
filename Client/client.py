@@ -70,7 +70,7 @@ class Client(object):
 	def send_to_server(self, message):
 		self.socket.sendall(json.dumps(message) + TERMINATOR)
 
-	def processCreate(self):
+	def Create(self):
 		message = { 'type' : 'create',
 			   	    'uuid' : self.uuid
 			  	  }
@@ -86,7 +86,7 @@ class Client(object):
 
 
 
-	def processList(self):
+	def List(self):
 		print "Write an user id or just press enter: "
 		try:
 			uid = int(input("Opt: "))
@@ -108,7 +108,7 @@ class Client(object):
 		return
 
 
-	def processNew(self, user_id):
+	def New(self, user_id):
 		message = { 'type' : 'new', 
 	   	    		'id' : user_id
 	  	  		  }
@@ -127,7 +127,7 @@ class Client(object):
 				print x
 
 
-	def processAll(self):
+	def All(self):
 		print "Write an user id : "
 		try:
 			uid = int(input("Opt: "))
@@ -141,19 +141,19 @@ class Client(object):
 		except Exception as e:
 			print("Id must be an integer")
 		return
-	def processSend(self):
+	def Send(self):
 		return "teste"
 		pass
 
-	def processRecv(self):
+	def Recv(self):
 		return "teste"
 		pass
 
-	def processReceipt(self):
+	def Receipt(self):
 		return "teste"
 		pass
 
-	def processStatus(self):
+	def Status(self):
 		return "teste"
 		pass
 
@@ -188,29 +188,29 @@ if __name__ == "__main__":
 
 
 		if x == 1:
-			client.processCreate()
+			client.Create()
 
 		elif x == 2:
-			client.processList()
+			client.List()
 
 		elif x == 3:
 			result = get_int(question = "User ID? ")
-			client.processNew(result) if result else log_error("Invalid Value")
+			client.New(result) if result else log_error("Invalid Value")
 
 		elif x == 4:
-			client.processAll()
+			client.All()
 
 		elif x == 5:
-			client.processSend()
+			client.Send()
 
 		elif x == 6:
-			client.processRecv()
+			client.Recv()
 
 		elif x == 7:
-			client.processReceipt()
+			client.Receipt()
 
 		elif x == 8:
-			client.processStatus()
+			client.Status()
 
 		elif x == 0:
 			break
