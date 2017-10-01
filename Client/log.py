@@ -1,6 +1,7 @@
 import inspect
 import logging
 
+OKBLUE = '\033[94m'
 OKGREEN = '\033[92m'
 WARNING = '\033[93m'
 FAIL = '\033[91m'
@@ -15,8 +16,12 @@ def log(level, message):
                 func.co_name,
                 message,))
 
-def error(err_msg):
+def log_error(err_msg):
 	print FAIL + BOLD + "ERROR: " + ENDC + err_msg
 
-def success(scs_msg):
+def log_success(scs_msg):
 	print OKGREEN + BOLD + "OK: " + ENDC + scs_msg
+
+def log_info(info_msg):
+	print OKBLUE + BOLD + "INFO: " + ENDC + info_msg
+

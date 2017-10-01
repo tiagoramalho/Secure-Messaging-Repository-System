@@ -7,6 +7,11 @@ from random import randint
 
 TERMINATOR = "\r\n"
 
+def get_int(question):
+	try:
+		return int(input(question))
+	except:
+		return None
 
 
 class Client(object):
@@ -24,14 +29,27 @@ class Client(object):
 		# Client informations innitialization
 
 		try:
-			file = open(file_name, "r")
+			file = open(
+				os.path.join(
+					os.path.realpath(
+						os.path.join(os.getcwd(), os.path.dirname(__file__), "clients")
+						), file_name
+					), 
+				"r")
+
 			self.uuid = int(file.read())
 			print self.uuid
 			file.close()
 
 		except Exception as e:
 			try:
-				file = open(file_name, "w+")
+				file = open(
+					os.path.join(
+						os.path.realpath(
+							os.path.join(os.getcwd(), os.path.dirname(__file__), "clients")
+							), file_name
+						), 
+					"w+")
 				x= randint(20, 100)
 				file.write( str(x) )
 
@@ -52,7 +70,7 @@ class Client(object):
 	def send_to_server(self, message):
 		self.socket.sendall(json.dumps(message) + TERMINATOR)
 
-	def processCreate(self):
+	def Create(self):
 		message = { 'type' : 'create',
 			   	    'uuid' : self.uuid
 			  	  }
@@ -61,14 +79,14 @@ class Client(object):
 		response = json.loads(self.socket.recv(1024))
 
 		if response.get('error'):
-			error(response.get('error'))
+			log_error(response.get('error'))
 
 		else:
-			success("Message box created successfully :)")
+			log_success("Message box created successfully :)")
 
 
 
-	def processList(self):
+	def List(self):
 		print "Write an user id or just press enter: "
 		try:
 			uid = int(input("Opt: "))
@@ -91,11 +109,26 @@ class Client(object):
 		return
 
 
-	def processNew(self, to_send):
-		return "teste"
-		pass
+	def New(self, user_id):
+		message = { 'type' : 'new', 
+	   	    		'id' : user_id
+	  	  		  }
+		
+		self.send_to_server(message)
+		response = json.loads(self.socket.recv(1024))
 
-	def processAll(self):
+		if response.get('error'):
+			log_error(response.get('error'))
+
+		elif len(response.get('result')) == 0:
+			log_info("No new messages to show")
+
+		else:
+			for x in response.get('result'):
+				print x
+
+
+	def All(self):
 		print "Write an user id : "
 		try:
 			uid = int(input("Opt: "))
@@ -109,19 +142,29 @@ class Client(object):
 		except Exception as e:
 			print("Id must be an integer")
 		return
-	def processSend(self):
+
+	def Send(self, dst, msg):
+		message = { 'type'	: 'send', 
+	   	    		'src'	: self.uuid,  # Tenho duvidas nisto
+	   	    		'dst'	: dst,
+	   	    		'msg'	: msg,
+	   	    		'copy'	: msg
+	  	  		  }
+
+	  	self.send_to_server(message)
+		response = json.loads(self.socket.recv(1024))
+		print response
+
+
+	def Recv(self):
 		return "teste"
 		pass
 
-	def processRecv(self):
+	def Receipt(self):
 		return "teste"
 		pass
 
-	def processReceipt(self):
-		return "teste"
-		pass
-
-	def processStatus(self):
+	def Status(self):
 		return "teste"
 		pass
 
@@ -143,7 +186,7 @@ def menu():
 if __name__ == "__main__":
 
 
-	client = Client("A")
+	client = Client("R")
 
 	while 1:
 		menu()
@@ -156,28 +199,36 @@ if __name__ == "__main__":
 
 
 		if x == 1:
-			client.processCreate()
+			client.Create()
 
 		elif x == 2:
-			client.processList()
+			client.List()
 
 		elif x == 3:
-			client.processNew()
+			result = get_int(question = "User ID? ")
+			client.New(result) if result else log_error("Invalid Value")
 
 		elif x == 4:
-			client.processAll()
+			client.All()
 
 		elif x == 5:
-			client.processSend()
+
+			dst = get_int(question = "Destination User ID? ")
+			if dst == None:
+				log_error("Invalid Value")
+			
+			msg = str(raw_input("Message? "))
+
+			client.Send(dst, msg)
 
 		elif x == 6:
-			client.processRecv()
+			client.Recv()
 
 		elif x == 7:
-			client.processReceipt()
+			client.Receipt()
 
 		elif x == 8:
-			client.processStatus()
+			client.Status()
 
 		elif x == 0:
 			break
