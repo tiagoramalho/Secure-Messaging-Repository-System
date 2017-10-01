@@ -87,12 +87,18 @@ class ServerRegistry:
     def userExists(self, uid):
         return self.getUser(uid) is not None
 
-    def getUser(self, uid):
+    def getUser(self, uid): # nao devia ver se ja existia aquele uuid gerado pelo cliente em vez de ver
+                            # as keys (id) gerado pelo servidor ?
         if isinstance(uid, int):
+            #estas 3 linahs a abaixo nao sao originais
+            #for x in self.users.items():
+            #    if uid == x[1]["description"]["uuid"]:
+            #        return x[1]
+            # as linhas abaixo ja vinham com o projeto e o que acho que esta message
             if uid in self.users.keys():
                 return self.users[uid]
             return None
-
+        #se o prof so deixava int no codigo de criacao para que e esta verificacao?
         if isinstance(uid, str):
             for user in users:
                 if user.id == uid:

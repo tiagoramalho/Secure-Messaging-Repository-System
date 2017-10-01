@@ -76,6 +76,7 @@ class Client(object):
 		except Exception as e:
 			print("List all users")
 			message = {'type' : 'list'}
+
 		self.send_to_server(message)
 		response = json.loads(self.socket.recv(1024))
 
