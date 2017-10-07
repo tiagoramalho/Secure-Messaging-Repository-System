@@ -67,7 +67,7 @@ class ServerActions:
             client.sendResult({"error": "wrong message format"})
             return
         #esta a usar a userExists para verificar o uuid e o id
-        if self.registry.userExists(uuid):
+        if self.registry.userExistsUuid(uuid):
             log(logging.ERROR, "User already exists: " + json.dumps(data))
             client.sendResult({"error": "uuid already exists"})
             return
