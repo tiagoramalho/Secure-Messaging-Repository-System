@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from socket import *
 from log import *
 import json
@@ -19,53 +22,56 @@ def get_int(question):
 
 class Client(object):
 	"""docstring for Client"""
-	def __init__(self, file_name="A"):
+	def __init__(self, uuid):
 		super(Client, self).__init__()
 
 		# Server connection variables
-		self.server_ip = "127.0.0.1"
-		self.server_port = 8080
-		self.socket = socket(AF_INET, SOCK_STREAM)
-		self.socket.connect((self.server_ip, self.server_port))
+		try:
+			self.server_ip = "127.0.0.1"
+			self.server_port = 8080
+			self.socket = socket(AF_INET, SOCK_STREAM)
+			self.socket.connect((self.server_ip, self.server_port))
+		except Exception as e:
+			log_error("Error connecting with the server")
+			raise
+			return
 
-
-		# Client informations innitialization
 
 		try:
-			file = open(
-				os.path.join(
-					os.path.realpath(
-						os.path.join(os.getcwd(), os.path.dirname(__file__), "clients")
-						), file_name
-					), 
-				"r")
+			self.uuid = int(uuid)
+		except ValueError:
+			log_error("UUID must be an integer")
+			raise
+			return
 
-			self.uuid = int(file.read())
-			file.close()
-
-		except Exception as e:
-			try:
-				file = open(
-					os.path.join(
-						os.path.realpath(
-							os.path.join(os.getcwd(), os.path.dirname(__file__), "clients")
-							), file_name
-						), 
-					"w+")
-				x= randint(20, 100)
-				file.write( str(x) )
-
-				self.uuid = x
-
-				file.close()
-
-			except Exception as e:
-				print "Something went wrong creating/opening UUID"
-				raise
+		self.id = self.get_self_ID()
+		if not self.id:
+			log_info("Creating message box...")
+			self.Create()
 
 
 
 
+
+	def get_self_ID(self):
+		"""
+			Returns message box ID for the client UUID
+			Returns None if it doesn't exist
+		"""
+
+		message = {'type' : 'list'}
+		self.send_to_server(message)
+		response = json.loads(self.socket.recv(1024))
+
+		if not response.get('error'):
+			for x in response.get('result'):
+				if self.uuid == int(x.get('description').get('uuid')):
+					log_info("You have a message box already registered (ID: %s)" % x.get('id'))
+					return int(x.get('id'))
+
+
+		log_info("You don't have a message box yet.")
+		return None
 
 
 
@@ -79,14 +85,13 @@ class Client(object):
 
 		self.send_to_server(message)
 		response = json.loads(self.socket.recv(1024))
-		print response
 
 		if response.get('error'):
-			log_error(response.get('error'))
+			log_error("This uuid already has a message box")
 
 		else:
-			log_success("Message box with ID " + str(response.get('result')) + " created successfully :)")
-
+			self.id = response.get('result')
+			log_success("Message box with created successfully (ID: %s)" % str(response.get('result')))
 
 
 	def List(self, uid = None):
@@ -101,6 +106,7 @@ class Client(object):
 		if response.get('error'):
 			log_error(response.get('error'))
 		else:
+			print response
 			try:
 				for x in response.get('result'):
 					print x
@@ -189,16 +195,12 @@ def menu():
 
 if __name__ == "__main__":
 
-
-
-	client = Client("R")
-
 	try:
-		client.uuid = int(sys.argv[1])
-	except:
-		pass
+		client = Client(sys.argv[1])
+	except IndexError:
+		log_error("Please pass a uuid as argument")
+		sys.exit(-1)
 
-	print client.uuid
 
 
 	while 1:
