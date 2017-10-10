@@ -2,6 +2,9 @@ from socket import *
 from log import *
 import json
 import os
+
+import sys
+
 from random import randint
 
 
@@ -38,7 +41,6 @@ class Client(object):
 				"r")
 
 			self.uuid = int(file.read())
-			print self.uuid
 			file.close()
 
 		except Exception as e:
@@ -72,24 +74,25 @@ class Client(object):
 
 	def Create(self):
 		message = { 'type' : 'create',
-			   	    'uuid' : self.uuid
+			   		'uuid' : self.uuid
 			  	  }
 
 		self.send_to_server(message)
 		response = json.loads(self.socket.recv(1024))
+		print response
 
 		if response.get('error'):
 			log_error(response.get('error'))
 
 		else:
-			log_success("Message box created successfully :)")
+			log_success("Message box with ID " + str(response.get('result')) + " created successfully :)")
 
 
 
 	def List(self, uid = None):
-                if uid == None:
-		        message = {'type' : 'list'}
-                else:
+		if uid == None:
+			message = {'type' : 'list'}
+		else:
 			message = {'type' : 'list', 'id' : uid}
 
 		self.send_to_server(message)
@@ -102,12 +105,12 @@ class Client(object):
 				for x in response.get('result'):
 					print x
 			except Exception as e:
-                                log_info("Id does not exist")
+				log_info("Id does not exist")
 
 
 	def New(self, user_id):
 		message = { 'type' : 'new', 
-	   	    		'id' : user_id
+	   				'id' : user_id
 	  	  		  }
 		
 		self.send_to_server(message)
@@ -125,20 +128,20 @@ class Client(object):
 
 
 	def All(self, uid):
-                message = {'type' : 'all', 'id' : uid}
-                self.send_to_server(message)
-                response = json.loads(self.socket.recv(1024))
-                if response.get('error'):
-                        log_error(response.get('error'))
-                else:
-                        print response
+				message = {'type' : 'all', 'id' : uid}
+				self.send_to_server(message)
+				response = json.loads(self.socket.recv(1024))
+				if response.get('error'):
+						log_error(response.get('error'))
+				else:
+						print response
 
-	def Send(self, dst, msg):
+	def Send(self, dst, src, msg):
 		message = { 'type'	: 'send', 
-	   	    		'src'	: self.uuid,  # Tenho duvidas nisto
-	   	    		'dst'	: dst,
-	   	    		'msg'	: msg,
-	   	    		'copy'	: msg
+	   				'src'	: src,
+	   				'dst'	: dst,
+	   				'msg'	: msg,
+	   				'copy'	: msg
 	  	  		  }
 
 	  	self.send_to_server(message)
@@ -148,19 +151,20 @@ class Client(object):
 
 	def Recv(self, sender, boxId):
 		message = { 'type'	: 'recv', 
-	   	    		'id'	: sender,  
-	   	    		'msg'	: boxId,
+	   				'id'	: sender,  
+	   				'msg'	: boxId,
 	  	  		  }
 
 	  	self.send_to_server(message)
 		response = json.loads(self.socket.recv(1024))
-                if response.get('error'):
+		if response.get('error'):
 			log_error(response.get('error'))
-                else:
-                        print response
-	        
+		else:
+			print response
+			
 
 	def Receipt(self):
+
 		return "teste"
 		pass
 
@@ -186,7 +190,16 @@ def menu():
 if __name__ == "__main__":
 
 
+
 	client = Client("R")
+
+	try:
+		client.uuid = int(sys.argv[1])
+	except:
+		pass
+
+	print client.uuid
+
 
 	while 1:
 		menu()
@@ -204,9 +217,9 @@ if __name__ == "__main__":
 		elif x == 2:
 			uid = get_int(question = "User ID? ")
 			if uid == None:
-                                client.List()
-                        else:
-                            client.List(uid)
+				client.List()
+			else:
+				client.List(uid)
 
 		elif x == 3:
 			result = get_int(question = "User ID? ")
@@ -218,26 +231,41 @@ if __name__ == "__main__":
 
 		elif x == 5:
 
+			src = get_int(question = "Source Message Box ID? ")
+
 			dst = get_int(question = "Destination User ID? ")
-			if dst == None:
-				log_error("Invalid Value")
 			
 			msg = str(raw_input("Message? "))
 
-			client.Send(dst, msg)
+			if dst == None:
+				log_error("Invalid Destination ID")
+
+			if src == None:
+				log_error("Invalid Source ID")
+
+			if msg == None:
+				log_error("Invalid Message")
+
+
+			if dst == None or src == None or msg == None:
+				continue
+			else:
+				client.Send(dst, src, msg)
+
 
 		elif x == 6:
 			sender = get_int(question = "Sender User ID? ")
 			if sender == None:
 				log_error("Invalid Value")
-                        
-                        boxId = get_int(question = "Message ID? ")
-                        if boxId == None:
-                                log_error("Invalid Value")
+						
+			boxId = get_int(question = "Message ID? ")
+			if boxId == None:
+				log_error("Invalid Value")
 
 			client.Recv(sender, boxId)
 
 		elif x == 7:
+			user_id = get_int(question = "Sender User ID? ")
 			client.Receipt()
 
 		elif x == 8:
@@ -255,11 +283,3 @@ if __name__ == "__main__":
 	print "byee :) "
 
 
-
-# Might be needed
-
-"""
-
-		data = self.socket.recv(1024)
-
-"""

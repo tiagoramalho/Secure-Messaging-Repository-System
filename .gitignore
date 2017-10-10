@@ -1,5 +1,10 @@
 *.pyc
+
 ./Cliente/clients/*
 ./Server/mboxes/*
 ./Server/receipts/*
+venv
 
+./Client/*
+!./Client/log.py
+!./Client/client.py

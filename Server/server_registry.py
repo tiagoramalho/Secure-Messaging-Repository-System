@@ -187,8 +187,9 @@ class ServerRegistry:
     def newFile(self, basename):
         i = 1
         while True:
-            path = os.path.join(basename, str(i))
-            if not os.path.exists(path):
+            #path = os.path.join(basename, str(i))
+            #print basename + str(i)
+            if not os.path.exists(basename + str(i)):
                 return str(i)
 
             i += 1

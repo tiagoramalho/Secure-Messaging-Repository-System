@@ -114,11 +114,8 @@ class Server:
         else:
             if len(data) > 0:
                 reqs = client.parseReqs(data)
-                print "TESTS"
-
                 for req in reqs:
 
-                    print "TESTS"
 
                     self.server_actions.handleRequest(s, req, self.clients[s])
             else:
