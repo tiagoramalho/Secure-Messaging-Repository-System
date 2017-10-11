@@ -170,21 +170,30 @@ class Client(object):
 			print response
 			
 
-	def Receipt(self):
+	def Receipt(self, box):
 		message = { 'type'		: 'receipt', 
 	   				'id'		: self.id,  
-	   				'msg'		: get_int("msg id? "),
-	   				'receipt'	: "Vamos imaginar que este texto é uma assinatura"  # hint: Não é ;) 
+	   				'msg'		: box,
+	   				'receipt'	: "Vamos imaginar que este texto e uma assinatura"  # hint: Não é ;) 
 	  	  		  }
 
 	  	self.send_to_server(message)
-		response = json.loads(self.socket.recv(1024))
+	  	self.socket.settimeout(0.5)
+	  	try:
+			response = json.loads(self.socket.recv(1024))
+			log_error(response.get('error'))
+		except:
+			log_success("Sent")
+	  	self.socket.settimeout(None)
+
+		"""
 		if response.get('error'):
 			log_error(response.get('error'))
 		else:
 			print response
 
 		return 
+		"""
 
 	def Status(self, sender, box):
 		message = { 'type'	: 'status', 
@@ -273,11 +282,11 @@ if __name__ == "__main__":
 
 
 		elif x == 6:
-                        receiver = get_int(question = "Receiver User ID? ")
+			receiver = get_int(question = "Receiver User ID? ")
 			if receiver == None:
 				log_error("Invalid Value")
-                        
-                        sender = get_int(question = "Sender User ID? ")
+
+			sender = get_int(question = "Sender User ID? ")
 			if sender == None:
 				log_error("Invalid Value")
 						
@@ -285,29 +294,37 @@ if __name__ == "__main__":
 			if boxId == None:
 				log_error("Invalid Value")
 
-                        box = str(sender) + "_" + str(boxId)
+			box = str(sender) + "_" + str(boxId)
 			client.Recv(receiver, box)
 
 
 		elif x == 7:
-			user_id = get_int(question = "Sender User ID? ")
-			client.Receipt()
-
-		elif x == 8:
-                        sender = get_int(question = "Sender User ID? ")
+			sender = get_int(question = "Sender User ID? ")
 			if sender == None:
 				log_error("Invalid Value")
-                        receiver = get_int(question = "Receiver User ID? ")
-
-			if receiver == None:
-				log_error("Invalid Value")
-                        
 						
 			boxId = get_int(question = "Message ID? ")
 			if boxId == None:
 				log_error("Invalid Value")
 
-                        box = str(receiver) + "_" + str(boxId)
+
+			box = str(sender) + "_" + str(boxId)
+			client.Receipt(box)
+
+		elif x == 8:
+			sender = get_int(question = "Sender User ID? ")
+			if sender == None:
+				log_error("Invalid Value")
+
+			receiver = get_int(question = "Receiver User ID? ")
+			if receiver == None:
+				log_error("Invalid Value")
+						
+			boxId = get_int(question = "Message ID? ")
+			if boxId == None:
+				log_error("Invalid Value")
+
+			box = str(receiver) + "_" + str(boxId)
 			client.Status(sender, box)
 
 		elif x == 0:
