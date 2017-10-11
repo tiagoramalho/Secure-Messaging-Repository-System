@@ -156,10 +156,10 @@ class Client(object):
 		print response
 
 
-	def Recv(self, sender, boxId):
+	def Recv(self, receiver, box):
 		message = { 'type'	: 'recv', 
-	   				'id'	: sender,  
-	   				'msg'	: boxId,
+	   				'id'	: receiver,  
+	   				'msg'	: box,
 	  	  		  }
 
 	  	self.send_to_server(message)
@@ -186,8 +186,18 @@ class Client(object):
 
 		return 
 
-	def Status(self):
-		return "teste"
+	def Status(self, sender, box):
+		message = { 'type'	: 'status', 
+	   				'id'	: sender,  
+	   				'msg'	: box,
+	  	  		  }
+
+	  	self.send_to_server(message)
+		response = json.loads(self.socket.recv(1024))
+		if response.get('error'):
+			log_error(response.get('error'))
+		else:
+			print response
 		pass
 
 
@@ -284,7 +294,21 @@ if __name__ == "__main__":
 			client.Receipt()
 
 		elif x == 8:
-			client.Status()
+                        sender = get_int(question = "Sender User ID? ")
+			if sender == None:
+				log_error("Invalid Value")
+                        receiver = get_int(question = "Receiver User ID? ")
+
+			if receiver == None:
+				log_error("Invalid Value")
+                        
+						
+			boxId = get_int(question = "Message ID? ")
+			if boxId == None:
+				log_error("Invalid Value")
+
+                        box = str(receiver) + "_" + str(boxId)
+			client.Status(sender, box)
 
 		elif x == 0:
 			break
