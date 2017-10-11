@@ -142,7 +142,8 @@ class Client(object):
 				else:
 						print response
 
-	def Send(self, dst, src, msg):
+	def Send(self, dst, msg, src = None):
+		src = self.id if src == None else src
 		message = { 'type'	: 'send', 
 	   				'src'	: src,
 	   				'dst'	: dst,
@@ -170,9 +171,20 @@ class Client(object):
 			
 
 	def Receipt(self):
+		message = { 'type'		: 'receipt', 
+	   				'id'		: self.id,  
+	   				'msg'		: get_int("msg id? "),
+	   				'receipt'	: "Vamos imaginar que este texto é uma assinatura"  # hint: Não é ;) 
+	  	  		  }
 
-		return "teste"
-		pass
+	  	self.send_to_server(message)
+		response = json.loads(self.socket.recv(1024))
+		if response.get('error'):
+			log_error(response.get('error'))
+		else:
+			print response
+
+		return 
 
 	def Status(self):
 		return "teste"
@@ -231,9 +243,7 @@ if __name__ == "__main__":
 			result = get_int(question = "User ID? ")
 			client.All(result) if result else log_error("Invalid Value")
 
-		elif x == 5:
-
-			src = get_int(question = "Source Message Box ID? ")
+		elif x == 5:  # Send Function
 
 			dst = get_int(question = "Destination User ID? ")
 			
@@ -242,17 +252,14 @@ if __name__ == "__main__":
 			if dst == None:
 				log_error("Invalid Destination ID")
 
-			if src == None:
-				log_error("Invalid Source ID")
-
 			if msg == None:
 				log_error("Invalid Message")
 
 
-			if dst == None or src == None or msg == None:
+			if dst == None or msg == None:
 				continue
 			else:
-				client.Send(dst, src, msg)
+				client.Send(dst, msg)
 
 
 		elif x == 6:
