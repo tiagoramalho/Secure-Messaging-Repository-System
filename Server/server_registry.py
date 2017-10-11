@@ -94,12 +94,12 @@ class ServerRegistry:
                 return x[1]
         return None
 
-    def getUser(self, uid): 
+    def getUser(self, uid):
         if isinstance(uid, int):
             if uid in self.users.keys():
                 return self.users[uid]
             return None
-        
+
         if isinstance(uid, str):
             for user in users:
                 if user.id == uid:
