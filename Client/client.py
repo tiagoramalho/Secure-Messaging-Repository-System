@@ -269,7 +269,7 @@ if __name__ == "__main__":
 				log_error("Invalid Value")
 
                         box = str(sender) + "_" + str(boxId)
-			client.Recv(sender, box)
+			client.Recv(receiver, box)
 
 
 		elif x == 7:
