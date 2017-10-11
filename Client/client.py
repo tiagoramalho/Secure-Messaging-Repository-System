@@ -256,7 +256,11 @@ if __name__ == "__main__":
 
 
 		elif x == 6:
-			sender = get_int(question = "Sender User ID? ")
+                        receiver = get_int(question = "Receiver User ID? ")
+			if receiver == None:
+				log_error("Invalid Value")
+                        
+                        sender = get_int(question = "Sender User ID? ")
 			if sender == None:
 				log_error("Invalid Value")
 						
@@ -264,7 +268,9 @@ if __name__ == "__main__":
 			if boxId == None:
 				log_error("Invalid Value")
 
-			client.Recv(sender, boxId)
+                        box = str(sender) + "_" + str(boxId)
+			client.Recv(sender, box)
+
 
 		elif x == 7:
 			user_id = get_int(question = "Sender User ID? ")
