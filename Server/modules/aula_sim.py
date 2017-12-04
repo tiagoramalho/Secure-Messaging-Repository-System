@@ -87,9 +87,7 @@ class Sim_Cypher(object):
                 self.decifrado.write(msg)
 
             elif len(x) != 0 and len(x) != self.block_size:
-                raise NameError("Ver esta linha porque este erro é estranho XD.\
-                                 Basicamente a encriptação deve estar mal feita porque a leitura de valores é diferente do \
-                                 len(block_size)") 
+                raise NameError("len(x) != block_size") 
             else:
                 break
 
@@ -169,55 +167,11 @@ class Sim_Cypher(object):
         except Exception as e:
             pass
 
-
-
-
-def set_bit(v, index, x):
-  """Set the index:th bit of v to 1 if x is truthy, else to 0, and return the new value."""
-  mask = 1 << index   # Compute mask, an integer with just bit 'index' set.
-  v &= ~mask          # Clear the bit indicated by the mask (if x is False)
-  if x:
-    v |= mask         # If x was True, set the bit indicated by the mask.
-  return v            # Return the result, we're done.
-
-
-def change_byte(file, offset):
-
-
-
-    fh = open(file, "r+b")
-    fh.seek(offset)
-    byte = fh.read(1)
-
-    print(byte)
-    x = int("1" if bin(byte[0])[-1] == "0" else "0")
-
-    integer = set_bit(int.from_bytes(byte,  byteorder='little'), 0,x)
-
-    byte = integer.to_bytes(1, "little")
-    print(byte)
-
-    fh.seek(offset)
-    fh.write(byte)
-    fh.seek(offset)
-    print(fh.read(1))
-    
-    fh.close()
-
 if __name__ == "__main__":
     x = Sim_Cypher( in_file=sys.argv[1], cyph_file="cifrado_AES_CBC.bmp", decyph_file="decifrado_AES_CBC.bmp", block_size = 16, key_size = 256, mode="CBC")
 
     x.cyph()
     x.decyph()
-
-
-
-    
-    x = Sim_Cypher( in_file=sys.argv[1], cyph_file="cifrado_AES_ECB.bmp", decyph_file="decifrado_AES_ECB.bmp", block_size = 16, key_size = 256, mode="ECB")
-
-    x.cyph()
-    x.decyph()
-
 
     x.close_all()
 
