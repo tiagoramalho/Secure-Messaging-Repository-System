@@ -72,7 +72,6 @@ class ServerRegistry:
 
     def messageWasRed(self, uid, msg):
         msg = str(msg)
-        print os.path.join(self.userMessageBox(uid), msg)
         if msg.startswith("_"):
             return os.path.exists(os.path.join(self.userMessageBox(uid), msg))
         else:
