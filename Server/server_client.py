@@ -40,7 +40,6 @@ class Client:
 
         self.bufin += data
         reqs = self.bufin.split(TERMINATOR)
-        print reqs
         self.bufin = reqs[-1]
         return reqs[:-1]
 
