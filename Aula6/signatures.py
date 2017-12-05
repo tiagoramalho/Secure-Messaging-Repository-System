@@ -1,14 +1,14 @@
 import os
 import pkcs11
-
 import getpass
 import OpenSSL
 from OpenSSL import crypto
-
 from pkcs11 import Attribute, ObjectClass
-
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+from pprint import pprint
+
+
 
 print("Getting token_label...")
 
@@ -17,11 +17,14 @@ token = lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
 
 data = b"Testing this piece of data"
 
+"""
 user_pin = ""
+
 
 if user_pin == "":
     user_pin = getpass.getpass("PIN ?")
 
+"""
 
 user_pin = "8958"
 
@@ -81,12 +84,23 @@ with token.open(user_pin = str(user_pin)) as session:
             OpenSSL.crypto.FILETYPE_ASN1,
             cert[Attribute.VALUE],
         )
+        info = {}
 
-        print(cert.get_subject())
+        info["subject"] = dict(cert.get_subject().get_components())
+        info["issuer"]  = dict(cert.get_issuer().get_components())
+
+        for key, value in info.items():
+            for key1, value1 in value.items():
+                info[key][key1] = value1.decode("UTF-8")
+
+        pprint(info)
+
+
+        print("-----------\nImportant data:\n-----------")
         print("Has expired? {0}".format(cert.has_expired()))
 
         
 
-        print("Is valid? {0}".format(_verify_certificate_chain(cert)))
+        print("Is valid? {0}\n".format(_verify_certificate_chain(cert)))
 
 
