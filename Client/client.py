@@ -5,21 +5,14 @@ from socket import *
 from log import *
 import json
 import os
-
+from os import path
 import sys
 
 from random import randint
 #---------------------------------------------- 
-import pkcs11
-from pkcs11.util.rsa import encode_rsa_public_key, decode_rsa_public_key
-import getpass
-import OpenSSL
-from OpenSSL import crypto
-from pkcs11 import Attribute, ObjectClass, Mechanism
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from pprint import pprint
+
+sys.path.append(path.join(path.dirname(path.realpath(__file__)),'../modules/'))
+from signatures import CC_Interaction
 
 TERMINATOR = "\r\n"
 
@@ -31,10 +24,9 @@ def get_int(question):
 
 
 
-
 class Client(object):
     """docstring for Client"""
-    def __init__(self, uuid):
+    def __init__(self):
         super(Client, self).__init__()
 
         # Server connection variables
@@ -50,7 +42,7 @@ class Client(object):
 
     
         try:
-            self.uuid = uuid
+            self.uuid = 123213
         except ValueError:
             log_error("UUID must be an integer")
             raise
@@ -61,6 +53,13 @@ class Client(object):
             log_info("Creating message box...")
             self.Create()
 
+        self.privShared = None #se poder usar o parameter como tenho posso ja por aqui
+        self.pubShared = None
+        self.sharedKey = None
+        self.AsyCypher = None #modulo branco
+
+        self.cc = CC_Interaction()
+        
 
 
 
@@ -230,26 +229,15 @@ def menu():
 
 
 if __name__ == "__main__":
+
     try:
-        pub = getPublicKeyCC()
-    except IndexError:
-        log_error("Please use citizen card")
-        sys.exit(-1)
-
-    if pub != None:
-
-        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
-        digest.update(pub)
-        uuid = digest.finalize()
-        uuid = int.from_bytes(uuid, byteorder='big')
+        client = Client()
+        pub = client.cc.get_pubkey_hash_int() #Tem de ser alterado
+        
+    except Exception as e:
+        raise e
 
     print(str(uuid) + " uuid")
-
-    try:
-        client = Client(uuid)
-    except IndexError:
-        log_error("Please pass a uuid as argument")
-        sys.exit(-1)
 
 
 
