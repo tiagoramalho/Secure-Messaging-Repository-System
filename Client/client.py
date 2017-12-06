@@ -9,7 +9,17 @@ import os
 import sys
 
 from random import randint
-
+#---------------------------------------------- 
+import pkcs11
+from pkcs11.util.rsa import encode_rsa_public_key, decode_rsa_public_key
+import getpass
+import OpenSSL
+from OpenSSL import crypto
+from pkcs11 import Attribute, ObjectClass, Mechanism
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from pprint import pprint
 
 TERMINATOR = "\r\n"
 
@@ -19,6 +29,21 @@ def get_int(question):
     except:
         return None
 
+
+def getPublicKeyCC():
+    pem = None
+    print("Getting token_label...")
+    lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
+    token = lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
+
+    user_pin = "8137"
+    if user_pin == "":
+        user_pin = getpass.getpass("PIN ?")
+    with token.open(user_pin = str(user_pin)) as session:
+        pub = session.get_key(pkcs11.constants.ObjectClass.PUBLIC_KEY,
+            pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION CERTIFICATE")
+        pem = encode_rsa_public_key(pub)
+    return pem 
 
 class Client(object):
     """docstring for Client"""
@@ -36,9 +61,9 @@ class Client(object):
             raise
             return
 
-
+    
         try:
-            self.uuid = int(uuid)
+            self.uuid = uuid
         except ValueError:
             log_error("UUID must be an integer")
             raise
@@ -61,7 +86,7 @@ class Client(object):
 
         message = {'type' : 'list'}
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024))
+        response = json.loads(self.socket.recv(1024).decode('utf-8'))
 
         if not response.get('error'):
             for x in response.get('result'):
@@ -76,16 +101,17 @@ class Client(object):
 
 
     def send_to_server(self, message):
-        self.socket.sendall(json.dumps(message) + TERMINATOR)
+        self.socket.sendall((json.dumps(message) +TERMINATOR).encode('utf-8'))
 
     def Create(self):
+
         message = { 'type' : 'create',
                     'uuid' : self.uuid
                   }
-
+        print(message)
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024))
-
+        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        print(response)
         if response.get('error'):
             log_error("This uuid already has a message box")
 
@@ -101,15 +127,15 @@ class Client(object):
             message = {'type' : 'list', 'id' : uid}
 
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024))
+        response = json.loads(self.socket.recv(1024).decode('utf-8'))
 
         if response.get('error'):
             log_error(response.get('error'))
         else:
-            print response
+            print(response)
             try:
                 for x in response.get('result'):
-                    print x
+                    print(x)
             except Exception as e:
                 log_info("Id does not exist")
 
@@ -120,7 +146,7 @@ class Client(object):
                   }
         
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024))
+        response = json.loads(self.socket.recv(1024).decode('utf-8'))
 
         if response.get('error'):
             log_error(response.get('error'))
@@ -130,17 +156,17 @@ class Client(object):
 
         else:
             for x in response.get('result'):
-                print x
+                print(x)
 
 
     def All(self, uid):
         message = {'type' : 'all', 'id' : uid}
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024))
+        response = json.loads(self.socket.recv(1024).decode('utf-8'))
         if response.get('error'):
             log_error(response.get('error'))
         else:
-            print response
+            print(response)
 
     def Send(self, dst, msg, src = None):
         src = self.id if src == None else src
@@ -152,8 +178,8 @@ class Client(object):
                   }
 
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024))
-        print response
+        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        print(response)
 
 
     def Recv(self, receiver, box):
@@ -163,11 +189,11 @@ class Client(object):
                   }
 
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024))
+        response = json.loads(self.socket.recv(1024).decode('utf-8'))
         if response.get('error'):
             log_error(response.get('error'))
         else:
-            print response
+            print(response)
                 
 
     def Receipt(self, box):
@@ -180,7 +206,7 @@ class Client(object):
         self.send_to_server(message)
         self.socket.settimeout(0.5)
         try:
-            response = json.loads(self.socket.recv(1024))
+            response = json.loads(self.socket.recv(1024).decode('utf-8'))
             log_error(response.get('error'))
         except:
             log_success("Sent")
@@ -194,32 +220,46 @@ class Client(object):
                   }
 
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024))
+        response = json.loads(self.socket.recv(1024).decode('utf-8'))
         if response.get('error'):
             log_error(response.get('error'))
         else:
-            print response
+            print(response)
         pass
 
 
 
 def menu():
-    print "\nChoose an option: "
-    print "1 - CREATE message box"
-    print "2 - LIST message boxes"
-    print "3 - List NEW messages in message box"
-    print "4 - List ALL messages in message box"
-    print "5 - SEND a message to a message box"
-    print "6 - RECEIV a specific message from a message box"
-    print "7 - Send a message RECEIPT"
-    print "8 - Check for message reception STATUS"
-    print "0 - EXIT"
+    print("\nChoose an option: ")
+    print("1 - CREATE message box")
+    print("2 - LIST message boxes")
+    print("3 - List NEW messages in message box")
+    print("4 - List ALL messages in message box")
+    print("5 - SEND a message to a message box")
+    print("6 - RECEIV a specific message from a message box")
+    print("7 - Send a message RECEIPT")
+    print("8 - Check for message reception STATUS")
+    print("0 - EXIT")
 
 
 if __name__ == "__main__":
+    try:
+        pub = getPublicKeyCC()
+    except IndexError:
+        log_error("Please use citizen card")
+        sys.exit(-1)
+
+    if pub != None:
+
+        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        digest.update(pub)
+        uuid = digest.finalize()
+        uuid = int.from_bytes(uuid, byteorder='big')
+
+    print(str(uuid) + " uuid")
 
     try:
-        client = Client(sys.argv[1])
+        client = Client(uuid)
     except IndexError:
         log_error("Please pass a uuid as argument")
         sys.exit(-1)
@@ -322,6 +362,6 @@ if __name__ == "__main__":
 
 
     client.socket.close()
-    print "byee :) "
+    print("byee :) ")
 
 
