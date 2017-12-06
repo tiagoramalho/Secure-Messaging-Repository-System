@@ -17,14 +17,14 @@ def log(level, message):
                 message,))
 
 def log_error(err_msg):
-	print FAIL + BOLD + "ERROR: " + ENDC + err_msg
+	print(FAIL + BOLD + "ERROR: " + ENDC + err_msg)
 
 def log_error2(error_prefix, err_msg):
-	print FAIL + BOLD + error_prefix + ": " + ENDC + err_msg
+	print(FAIL + BOLD + error_prefix + ": " + ENDC + err_msg)
 
 def log_success(scs_msg):
-	print OKGREEN + BOLD + "OK: " + ENDC + scs_msg
+	print(OKGREEN + BOLD + "OK: " + ENDC + scs_msg)
 
 def log_info(info_msg):
-	print OKBLUE + BOLD + "INFO: " + ENDC + info_msg
+	print(OKBLUE + BOLD + "INFO: " + ENDC + info_msg)
 
