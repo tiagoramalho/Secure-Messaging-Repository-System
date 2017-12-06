@@ -12,6 +12,7 @@ from random import randint
 #---------------------------------------------- 
 import pkcs11
 from pkcs11.util.rsa import encode_rsa_public_key, decode_rsa_public_key
+from cryptography.hazmat.primitives.asymmetric import rsa
 import getpass
 import OpenSSL
 from OpenSSL import crypto
@@ -20,6 +21,7 @@ from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from pprint import pprint
+#from aula_asym import *
 
 TERMINATOR = "\r\n"
 
@@ -35,8 +37,7 @@ def getPublicKeyCC():
     print("Getting token_label...")
     lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
     token = lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
-
-    user_pin = "8137"
+    user_pin = ""
     if user_pin == "":
         user_pin = getpass.getpass("PIN ?")
     with token.open(user_pin = str(user_pin)) as session:
@@ -63,7 +64,7 @@ class Client(object):
 
     
         try:
-            self.uuid = uuid
+            self.uuid = int(uuid)
         except ValueError:
             log_error("UUID must be an integer")
             raise
@@ -74,6 +75,11 @@ class Client(object):
             log_info("Creating message box...")
             self.Create()
 
+        self.privShared = None #se poder usar o parameter como tenho posso ja por aqui
+        self.pubShared = None
+        self.sharedKey = None
+        self.AsyCypher = None #modulo branco 
+        
 
 
 
