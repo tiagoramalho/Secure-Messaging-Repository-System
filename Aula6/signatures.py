@@ -17,16 +17,13 @@ token = lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
 
 data = b"Testing this piece of data"
 
-"""
 user_pin = ""
 
 
 if user_pin == "":
     user_pin = getpass.getpass("PIN ?")
 
-"""
 
-user_pin = "8958"
 
 def sign():
 
