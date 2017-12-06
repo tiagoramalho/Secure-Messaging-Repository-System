@@ -269,7 +269,7 @@ if __name__ == "__main__":
 
             dst = get_int(question = "Destination User ID? ")
 
-            msg = str(raw_input("Message? "))
+            msg = str(input("Message? "))
 
             if dst == None:
                 log_error("Invalid Destination ID")
