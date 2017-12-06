@@ -51,22 +51,14 @@ class Client(object):
             raise
             return
         self.id = self.get_self_ID()
-    
+        print(self.id) 
 
         self.privShared = None #se poder usar o parameter como tenho posso ja por aqui
         self.pubShared = None
         self.sharedKey = None
 
         #assimetrica gerada por nos (nao do cc)
-        if not self.id:
-            #pedir informaçoes ao utilizador como por exemplo key size
-            pass
-        
-            self.AsySize = 2048
-            self.AsyCypher = Asy_Cyphers
-        else:
-            #fazer load das informaçoes dele ?
-            pass
+        self.AsyCypher = Asy_Cyphers(self.uuid)
 
         if not self.id:
             log_info("Creating message box...")
