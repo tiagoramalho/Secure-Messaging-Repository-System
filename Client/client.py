@@ -30,20 +30,7 @@ def get_int(question):
         return None
 
 
-def getPublicKeyCC():
-    pem = None
-    print("Getting token_label...")
-    lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
-    token = lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
 
-    user_pin = "8137"
-    if user_pin == "":
-        user_pin = getpass.getpass("PIN ?")
-    with token.open(user_pin = str(user_pin)) as session:
-        pub = session.get_key(pkcs11.constants.ObjectClass.PUBLIC_KEY,
-            pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION CERTIFICATE")
-        pem = encode_rsa_public_key(pub)
-    return pem 
 
 class Client(object):
     """docstring for Client"""
