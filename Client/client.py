@@ -12,7 +12,9 @@ from random import randint
 #---------------------------------------------- 
 
 sys.path.append(path.join(path.dirname(path.realpath(__file__)),'../modules/'))
-from signatures import CC_Interaction
+from cc_interection import CC_Interaction
+from asymmetric import Asy_Cyphers 
+from symmetric import Sym_Cyphers 
 
 TERMINATOR = "\r\n"
 
@@ -22,7 +24,8 @@ def get_int(question):
     except:
         return None
 
-
+def randomMsgId():
+    return int.from_bytes(os.urandom(16), byteorder="big")
 
 class Client(object):
     """docstring for Client"""
@@ -39,26 +42,36 @@ class Client(object):
             log_error("Error connecting with the server")
             raise
             return
-
-    
+        self.listMsgID = []
+        self.cc = CC_Interaction()
         try:
-            self.uuid = 123213
+            self.uuid = self.cc.get_pubkey_hash_int() 
         except ValueError:
-            log_error("UUID must be an integer")
+            log_error("Error getting uuid")
             raise
             return
-
         self.id = self.get_self_ID()
-        if not self.id:
-            log_info("Creating message box...")
-            self.Create()
+    
 
         self.privShared = None #se poder usar o parameter como tenho posso ja por aqui
         self.pubShared = None
         self.sharedKey = None
-        self.AsyCypher = None #modulo branco
 
-        self.cc = CC_Interaction()
+        #assimetrica gerada por nos (nao do cc)
+        if not self.id:
+            #pedir informaçoes ao utilizador como por exemplo key size
+            pass
+        
+            self.AsySize = 2048
+            self.AsyCypher = Asy_Cyphers
+        else:
+            #fazer load das informaçoes dele ?
+            pass
+
+        if not self.id:
+            log_info("Creating message box...")
+            self.Create()
+
         
 
 
@@ -90,13 +103,18 @@ class Client(object):
         self.socket.sendall((json.dumps(message) +TERMINATOR).encode('utf-8'))
 
     def Create(self):
-
+        msgID = randomMsgId() 
+        #falta a parte de assinal este msgID
+        self.listMsgID.append(msgID) 
+         
         message = { 'type' : 'create',
-                    'uuid' : self.uuid
+                    'uuid' : self.uuid,
+                    'randomId': msgID
                   }
         print(message)
         self.send_to_server(message)
         response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        #verificar o msgID se esta na lista de enviados? e verificar assinatura
         print(response)
         if response.get('error'):
             log_error("This uuid already has a message box")
@@ -236,10 +254,7 @@ if __name__ == "__main__":
         
     except Exception as e:
         raise e
-
-    print(str(uuid) + " uuid")
-
-
+    print(client.uuid)
 
     while 1:
         menu()

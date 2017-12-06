@@ -65,10 +65,7 @@ class ServerActions:
             return
 
         uuid = data['uuid']
-        print("\n\n\n\n\n\n aqui")
-        print(type(uuid))
-        if not isinstance(uuid, long): # is it an error ?
-            print("nao e inteiro")
+        if not isinstance(uuid, int): # is it an error ?
             log(logging.ERROR, "No valid \"uuid\" field in \"create\" message: " +
                 json.dumps(data))
             client.sendResult({"error": "wrong message format"})

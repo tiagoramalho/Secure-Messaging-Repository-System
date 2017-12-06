@@ -7,8 +7,8 @@ import sys
 
 
 
-class Sim_Cypher(object):
-    """docstring for Sim_Cypher"""
+class Sym_Cyphers(object):
+    """docstring for Sym_Cyphers"""
     def __init__(self, in_file, cyph_file, decyph_file, block_size = 16, key_size=256, mode="CBC"):
 
         self.in_file_name = in_file
@@ -168,7 +168,7 @@ class Sim_Cypher(object):
             pass
 
 if __name__ == "__main__":
-    x = Sim_Cypher( in_file=sys.argv[1], cyph_file="cifrado_AES_CBC.bmp", decyph_file="decifrado_AES_CBC.bmp", block_size = 16, key_size = 256, mode="CBC")
+    x = Sym_Cyphers( in_file=sys.argv[1], cyph_file="cifrado_AES_CBC.bmp", decyph_file="decifrado_AES_CBC.bmp", block_size = 16, key_size = 256, mode="CBC")
 
     x.cyph()
     x.decyph()

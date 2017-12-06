@@ -25,11 +25,10 @@ class CC_Interaction(object):
     def __init__(self):
         super(CC_Interaction, self).__init__()
         try:
-            print("Loading lib opensc-pkcs11.so...")
-            lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
-            token = lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
-            data = b"Testing this piece of data"
-            user_pin = "8958"
+            self.lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
+            print("Getting token_label...")
+            self.token = self.lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
+            self.user_pin = getpass.getpass("PIN ?")
 
         except (TokenNotPresent, NoSuchToken, IndexError):
             print("Please insert the Citizen Card\n Exiting...")
@@ -38,17 +37,6 @@ class CC_Interaction(object):
             raise e
 
 
-        """
-        user_pin = ""
-
-
-        if user_pin == "":
-            user_pin = getpass.getpass("PIN ?")
-
-        """
-
-        
-
     def test_internet_on():
         try:
             urllib2.urlopen('www.google.com', timeout=1)
@@ -56,30 +44,24 @@ class CC_Interaction(object):
         except urllib2.URLError as err: 
             return False
 
-    def getPublicKeyCC():
-        pem = None
-        print("Getting token_label...")
-        lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
-        token = lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
-
-        user_pin = "8137"
-        if user_pin == "":
-            user_pin = getpass.getpass("PIN ?")
-        with token.open(user_pin = str(user_pin)) as session:
+    def getPublicKeyCC(self):
+        with self.token.open(user_pin = str(self.user_pin)) as session:
             pub = session.get_key(pkcs11.constants.ObjectClass.PUBLIC_KEY,
                 pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION CERTIFICATE")
             pem = encode_rsa_public_key(pub)
         return pem
 
-    def get_pubkey_hash_int():
+    def get_pubkey_hash_int(self):
+        pub = self.getPublicKeyCC()
         digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
         digest.update(pub)
         uuid = digest.finalize()
         uuid = int.from_bytes(uuid, byteorder='big')
+        return uuid
 
     def sign():
 
-        with token.open(user_pin = str(user_pin)) as session:
+        with self.token.open(user_pin = str(self.user_pin)) as session:
 
             priv = session.get_key(pkcs11.constants.ObjectClass.PRIVATE_KEY,
                 pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION KEY")
@@ -132,7 +114,7 @@ class CC_Interaction(object):
 
     def a_lot_of_functions_here(): # This has a lot of info. I recommend changes
         i = 0
-        with token.open(user_pin = str(user_pin)) as session:
+        with self.token.open(user_pin = str(self.user_pin)) as session:
             chain = open("my_chain.pem", "wb")
 
             for cert in session.get_objects({Attribute.CLASS: ObjectClass.CERTIFICATE,}):
