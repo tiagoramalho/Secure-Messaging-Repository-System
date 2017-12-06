@@ -187,7 +187,7 @@ class ServerRegistry:
         i = 1
         while True:
             #path = os.path.join(basename, str(i))
-            #print basename + str(i)
+            #print (basename + str(i))
             if not os.path.exists(basename + str(i)):
                 return str(i)
 
@@ -224,8 +224,8 @@ class ServerRegistry:
                 f = os.path.join(path, msg)
                 path = os.path.join(path, "_" + msg)
                 log(logging.DEBUG, "Marking message " + msg + " as read")
-                print f
-                print path
+                print (f)
+                print (path)
                 os.rename(f, path)
             except:
                 logging.exception("Cannot rename message file to " + path)
@@ -295,7 +295,7 @@ class ServerRegistry:
         result = {"msg": copy, "receipts": []}
 
         for fname in os.listdir(boxdir):
-            print fname
+            print (fname)
             m = pattern.match(fname)
             if m and m.group(1) == msg:
                 path = os.path.join(self.userReceiptBox(uid), fname)

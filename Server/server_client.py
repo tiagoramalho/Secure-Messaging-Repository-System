@@ -37,7 +37,7 @@ class Client:
             log(logging.ERROR, "Client (%s) buffer exceeds MAX BUFSIZE. %d > %d" %
                 (self, len(self.bufin) + len(data), MAX_BUFSIZE))
             self.bufin = ""
-
+        
         self.bufin += data
         reqs = self.bufin.split(TERMINATOR)
         self.bufin = reqs[-1]

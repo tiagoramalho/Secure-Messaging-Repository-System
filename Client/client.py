@@ -37,7 +37,7 @@ def getPublicKeyCC():
     print("Getting token_label...")
     lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
     token = lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
-    user_pin = ""
+    user_pin = "8958"
     if user_pin == "":
         user_pin = getpass.getpass("PIN ?")
     with token.open(user_pin = str(user_pin)) as session:
@@ -300,7 +300,7 @@ if __name__ == "__main__":
 
             dst = get_int(question = "Destination User ID? ")
 
-            msg = str(raw_input("Message? "))
+            msg = str(input("Message? "))
 
             if dst == None:
                 log_error("Invalid Destination ID")

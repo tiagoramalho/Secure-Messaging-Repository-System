@@ -51,20 +51,24 @@ class ServerActions:
                     str(req['type']) + " Should be one of: " + str(self.messageTypes.keys()))
                 client.sendResult({"error": "unknown request"})
 
-        except Exception, e:
+        except Exception as e:
             logging.exception("Could not handle request")
 
     def processCreate(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
 
         if 'uuid' not in data.keys():
+            print("no data.keys")
             log(logging.ERROR, "No \"uuid\" field in \"create\" message: " +
                 json.dumps(data))
             client.sendResult({"error": "wrong message format"})
             return
 
         uuid = data['uuid']
-        if not isinstance(uuid, int): # is it an error ?
+        print("\n\n\n\n\n\n aqui")
+        print(type(uuid))
+        if not isinstance(uuid, long): # is it an error ?
+            print("nao e inteiro")
             log(logging.ERROR, "No valid \"uuid\" field in \"create\" message: " +
                 json.dumps(data))
             client.sendResult({"error": "wrong message format"})

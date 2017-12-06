@@ -105,7 +105,7 @@ class Server:
         client = self.clients[s]
         data = None
         try:
-            data = s.recv(BUFSIZE)
+            data = s.recv(BUFSIZE).decode('utf-8')
             log(logging.DEBUG,
                 "Received data from %s. Message:\n%r" % (client, data))
         except:
@@ -129,7 +129,7 @@ class Server:
 
         client = self.clients[s]
         try:
-            sent = client.socket.send(client.bufout[:BUFSIZE])
+            sent = client.socket.send(client.bufout[:BUFSIZE].encode('utf-8'))
             log(logging.DEBUG, "Sent %d bytes to %s. Message:\n%r" %
                 (sent, client, client.bufout[:sent]))
             # leave remaining to be sent later
@@ -143,14 +143,15 @@ class Server:
         while True:
             # sockets to select for reading: (the server socket + every open
             # client connection)
-            rlist = [self.ss] + self.clients.keys()
-
+            rlist = [self.ss]
+            for x in self.clients.keys():
+                rlist = rlist + [x]
             # sockets to select for writing: (those that have something in
             # bufout)
             wlist = [sock for sock in self.clients if len(
                 self.clients[sock].bufout) > 0]
 
-            (rl, wl, xl) = select(rlist, wlist, rlist)
+            rl, wl, xl = select(rlist, wlist, rlist)
 
             # Deal with incoming data:
             for s in rl:
@@ -181,8 +182,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         PORT = int(sys.argv[1])
 
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, formatter=logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s'))
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format=('%(asctime)s - %(levelname)s - %(message)s'))
 
     serv = None
     while True:
