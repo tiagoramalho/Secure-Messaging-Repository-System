@@ -36,31 +36,41 @@ def loads(ks):
 
 class Asy_Cyphers(object):
     """docstring for Asy_Cyphers"""
-    def __init__(self, key_size, pub_file, private_file, file_to_cyph):
+    def __init__(self, uuid):
         super(Asy_Cyphers, self).__init__()
+        self.pub_file = str(uuid) + "_pub.pem"
+        self.private_file =  str(uuid) + "_priv.pem"
+        try: 
+            print("try")
+            with open(self.pub_file, "rb") as key_file:
+                self.public_key = serialization.load_pem_public_key(
+                    key_file.read(),
+                    backend=default_backend()
+                )  
+            with open(self.private_file, "rb") as key_file:
+                self.private_key = serialization.load_pem_private_key(
+                    key_file.read(),
+                    password=None,
+                    backend=default_backend()
+                )
 
-        self.private_key = rsa.generate_private_key(
-                public_exponent=65537,
-                key_size=key_size,
-                backend=default_backend()
-        )
-        self.public_key = self.private_key.public_key()
+        except Exception as e:
+            print("exception")
+            self.private_key = rsa.generate_private_key(
+                    public_exponent=65537,
+                    key_size=512,
+                    backend=default_backend()
+            )
+            self.public_key = self.private_key.public_key()
+            self.save_keys()
 
-        self.pub_file = pub_file
-        self.private_file = private_file
 
-        self.file_to_cyph = file_to_cyph
-        self.cyphed_file = self.file_to_cyph+"_cyph_AES_CBC"
-        self.decyphed_file = self.file_to_cyph+"_decyph_AES_CBC"
-
-        self.key_size = 256
-
-        self.sim_cypher = Sim_Cypher( 	in_file=self.file_to_cyph,
+        """self.sim_cypher = Sim_Cypher( 	in_file=self.file_to_cyph,
                                         cyph_file=self.cyphed_file,
                                         decyph_file=self.decyphed_file,
                                         block_size = 16,
                                         key_size = self.key_size,
-                                        mode="CBC")
+                                        mode="CBC")"""
 
 
 
@@ -121,10 +131,6 @@ class Asy_Cyphers(object):
         hibrid_data.write(base64.b64encode(ciphered_text) + bytes("\n", "utf-8") + base64.b64encode(ciphered_key))
         hibrid_data.close()
         
-
-
-
-
     def decyph(self):
         intermidiate_data = open("intermidiate_data", "rb").read().split(bytes("\n", "utf-8"))
         intermidiate_data = intermidiate_data

@@ -9,15 +9,12 @@ import sys
 
 class Sym_Cyphers(object):
     """docstring for Sym_Cyphers"""
-    def __init__(self, in_file, cyph_file, decyph_file, block_size = 16, key_size=256, mode="CBC"):
+    def __init__(self, uuid, block_size = 16, key_size=256, mode="CBC"):
 
-        self.in_file_name = in_file
-        self.cyph_file_name = cyph_file
-        self.decyph_file_name = decyph_file
+        self.in_file_name = str(uuid) + "_symetric.pem" 
 
         self.block_size = block_size
         self.key_size = key_size
-
         self.backend = default_backend()
         self.key =  os.urandom(self.key_size//8)
         self.iv =  os.urandom(self.block_size)
@@ -31,10 +28,8 @@ class Sym_Cyphers(object):
         else:
             raise
             print("ERROR invalid cypher MODE")
-            #sys.exit(123123123)
 
         self.cipher = Cipher(algorithms.AES(self.key), self.mode, backend=self.backend)
-
         self.encryptor = self.cipher.encryptor()
         self.decryptor = self.cipher.decryptor()
 
