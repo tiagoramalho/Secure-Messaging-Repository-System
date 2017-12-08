@@ -6,8 +6,7 @@ KS_PWD = password
 
 CC_ROOTS = \
     https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt \
-    https://pki.multicert.com/cert/MULTICERT_CA/mca_001_2.cer
-
+	https://pkiroot.multicert.com/cert/MCRootCA.cer
 CC_STATE_ROOTS = \
     https://www.scee.gov.pt/media/1709/ECRaizEstado.crt
 
