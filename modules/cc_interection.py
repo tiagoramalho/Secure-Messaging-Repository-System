@@ -106,7 +106,7 @@ class CC_Interaction(object):
 
             store_ctx = crypto.X509StoreContext(store, certificate)
 
-            store_ctx.verify_certificate()
+            print(store_ctx.verify_certificate())
 
             return True
 
@@ -214,7 +214,7 @@ class CC_Interaction(object):
             return
 
         print("Internet connection detected. Updating CRL's...")
-
+        all_crls = []
         path = os.path.join(self.dir, "certs")
         for file in os.listdir(path):
             if file.endswith(".pem"):
@@ -222,13 +222,13 @@ class CC_Interaction(object):
                 cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(path, "r").read())
                 extentions = self.get_cert_extentions(cert)
 
-                base_crl = extentions["extentions"].get("base_crl", None)
-                delta_crl = extentions["extentions"].get("delta_crl", None)
+                base_crl = all_crls.append(extentions["extentions"].get("base_crl", None))
+                delta_crl = all_crls.append(extentions["extentions"].get("delta_crl", None))
 
-                self.get_crl(base_crl)
-                self.get_crl(delta_crl)
+        for crl in list(set(all_crls)):
+            self.get_crl(crl)
 
-
+        # This gets my certificate CRL's and delta
         path = os.path.join(self.dir, "certs", file)
         extentions = self.get_cert_extentions(self.cert)
 
@@ -237,6 +237,7 @@ class CC_Interaction(object):
 
         self.get_crl(base_crl)
         self.get_crl(delta_crl)
+        # Ends here
 
         print("Done")
         self.crls_updated = True
@@ -400,6 +401,8 @@ if __name__ == '__main__':
     cc.get_all_crls()
     print(chain)
     print(cc.get_crl_list_for_given_chain(chain))
+
+    print(cc.verify_certificate_chain(chain, cert))
 
     #cc.validate_by_crl(cc.cert_chain, cert)
 
