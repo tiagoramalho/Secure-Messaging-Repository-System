@@ -128,7 +128,6 @@ class Client(object):
         if response.get('error'):
             log_error(response.get('error'))
         else:
-            print(response)
             try:
                 for x in response.get('result'):
                     print(x)
