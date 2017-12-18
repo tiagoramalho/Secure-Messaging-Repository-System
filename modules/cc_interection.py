@@ -16,11 +16,14 @@ from pkcs11.util.rsa import encode_rsa_public_key
 from pkcs11 import Attribute, ObjectClass
 from pkcs11.exceptions import TokenNotPresent
 from pkcs11.exceptions import NoSuchToken
+from pkcs11.util.x509 import decode_x509_certificate
+
 import pkcs11
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 
 import time
 
@@ -38,7 +41,7 @@ class CC_Interaction(object):
             self.token = self.lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
             self.user_pin = getpass.getpass("PIN ?")
             self.crls_updated = False
-            self.get_my_cert()
+            self.cert = self.get_my_cert()
             self.get_all_crls()
         except (TokenNotPresent, NoSuchToken, IndexError):
             print("Please insert the Citizen Card\n Exiting...")
@@ -81,88 +84,67 @@ class CC_Interaction(object):
             priv = session.get_key(pkcs11.constants.ObjectClass.PRIVATE_KEY,
                 pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION KEY")
 
-            print(priv)
 
             signature = priv.sign(data, mechanism=pkcs11.Mechanism.SHA1_RSA_PKCS)
-            print(type(signature))
 
-            pub = session.get_key(pkcs11.constants.ObjectClass.PUBLIC_KEY,
-                pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION CERTIFICATE")
-            print(pub)
+            return signature
 
-            print(pub.verify(data, signature, mechanism=pkcs11.Mechanism.SHA1_RSA_PKCS))
+
+
+    # Ver se significado inválido
+    def validate_signature(self, data, signature, certificate):
+        try:
+            #Verificações por OCSP
+            if self.test_internet_on() and self.crls_updated:
+                #self.validate_by_ocsp()
+                self.verify_certificate_chain(self.get_cert_chain(certificate), certificate)
+
+            elif self.test_internet_on() and not self.crls_updated:
+                self.get_all_crls()             #Updating crl's
+                #self.validate_by_ocsp()
+                self.verify_certificate_chain(self.get_cert_chain(certificate), certificate)
+
+
+
+            verification = crypto.verify(certificate, signature, data, "sha1")
+            return True
+        except Exception as e:
+            print("Failed encryption")
+            print(e)
+            raise e
+
+            #return False
+        
+
 
     # Verifica a cadeia de certificação mas não vê se foi revogado.
     def verify_certificate_chain(self, chain, cert):
+        crl_list = self.get_crl_list_for_given_chain(chain)
+        crl_list = self.crl_files_to_objects(crl_list)
+
 
         certificate = cert
 
         try:
                     
             store = crypto.X509Store()
+            store.set_flags(crypto.X509StoreFlags.CRL_CHECK_ALL)
 
             for cert in chain:
                 store.add_cert(cert)
 
+            for crl in crl_list:
+                store.add_crl(crl)
+
             store_ctx = crypto.X509StoreContext(store, certificate)
 
-            print(store_ctx.verify_certificate())
+            store_ctx.verify_certificate()
 
             return True
 
         except Exception as e:
-            print(e)
-            return False
+            raise e
 
-    # Devolve o URI por causa da porcaria do ASN1. Vi-me obrigado  a Improvisar
-    def get_URI(self, s):
-        return (s.split("URI:"))[1].split("\n")[0]
-
-
-    # devolve as extensões na forma de um dicionário {"extentions": {chave: valor}}
-    def get_cert_extentions(self, cert):
-        info = {}
-        info["extentions"] = {} 
-        for value in range(0,cert.get_extension_count()):
-            c = cert.get_extension(value)
-            name = c.get_short_name()
-
-            try:
-                c.__str__()
-            except Exception as e:
-                continue
-
-            if name == b"freshestCRL":
-                info["extentions"]["delta_crl"]  = self.get_URI(c.__str__())
-
-            elif name == b"crlDistributionPoints":
-                info["extentions"]["base_crl"]  = self.get_URI(c.__str__())
-
-            elif name == b"authorityInfoAccess":
-                info["extentions"]["ocsp"]  = self.get_URI(c.__str__())
-            else:
-                info["extentions"][c.get_short_name()]  = c.__str__()
-
-
-        return info
-
-    # Devolve issur do certificado certificado
-    def get_cert_issuer(self, cert):
-        return dict(cert.get_issuer().get_components())
-
-    # Devolve Subject do certificado certificado
-    def get_cert_subject(self, cert):
-        return dict(cert.get_subject().get_components())
-
-
-    def ocsp(self, cert): 
-        with self.token.open() as session:
-            try:
-                uri = self.get_cert_extentions(cert)["ocsp"]
-            except:
-                return True
-
-        #TODO get_ocsp
 
 
     # Devolve a cadeia de certificação.
@@ -201,7 +183,6 @@ class CC_Interaction(object):
                     OpenSSL.crypto.FILETYPE_ASN1,
                     cert[Attribute.VALUE],
                 )
-                self.cert = cert
                 return cert
 
     # Faz download de todas as Revocation Lists
@@ -239,30 +220,7 @@ class CC_Interaction(object):
         self.get_crl(delta_crl)
         # Ends here
 
-        print("Done")
         self.crls_updated = True
-
-    # Faz download de uma Revocation List Especifica 
-    def get_crl(self,crl_link):
-
-        if crl_link == None:
-            return
-
-        local_filename = str(crl_link.split('/')[-1])
-
-        print(crl_link)
-        r = requests.get(crl_link, stream=True)
-        path = os.path.join(self.dir, "crls", local_filename)
-        with open(path, 'wb') as f:
-            shutil.copyfileobj(r.raw, f)
-
-        return local_filename
-
-    def get_crl_links(self, cert):
-        base = self.get_cert_extentions(cert)["extentions"].get("base_crl")
-        delta = self.get_cert_extentions(cert)["extentions"].get("delta_crl")
-        #print ((base, delta))
-        return (base, delta)
 
 
     def get_crl_list_for_given_chain(self, chain):
@@ -277,7 +235,6 @@ class CC_Interaction(object):
 
                 if delta_crl:
                     delta_crl = delta_crl.split('/')[-1]
-                #print ((base_crl, delta_crl))
                 if file == base_crl:
                     list_crl_chain.append(file)
 
@@ -286,125 +243,95 @@ class CC_Interaction(object):
 
         return list_crl_chain
 
+
+
+
+
+
+    # -----------------------------
+    #       HELP Functions
+    # -----------------------------
+
     def crl_files_to_objects(self, files):
+
         path = os.path.join(self.dir, "crls")
         obj_list = []
         for file in files:
-            with open(os.path.join(path, file), 'wb') as f:
-                obj_list.append()
+            with open(os.path.join(path, file), 'rb') as f:
+
+                obj_list.append(OpenSSL.crypto.load_crl(crypto.FILETYPE_ASN1, f.read()))
+        return obj_list
+
+    # Devolve o URI por causa da porcaria do ASN1. Vi-me obrigado  a Improvisar
+    def get_URI(self, s):
+        return (s.split("URI:"))[1].split("\n")[0]
+
+    def get_crl_links(self, cert):
+        base = self.get_cert_extentions(cert)["extentions"].get("base_crl")
+        delta = self.get_cert_extentions(cert)["extentions"].get("delta_crl")
+        return (base, delta)
 
 
+    # Faz download de uma Revocation List Especifica 
+    def get_crl(self,crl_link):
 
-    def a_lot_of_functions_here(self): # This has a lot of info. I recommend changes
+        if crl_link == None:
+            return
 
-        """
-        if os.path.isfile(local_filename):
-            with open(local_filename, 'rb') as f:
-                crl = OpenSSL.crypto.load_crl(crypto.FILETYPE_ASN1, f.read()).to_cryptography()
-                
+        local_filename = str(crl_link.split('/')[-1])
 
+        r = requests.get(crl_link, stream=True)
+        path = os.path.join(self.dir, "crls", local_filename)
+        with open(path, 'wb') as f:
+            shutil.copyfileobj(r.raw, f)
 
-                time = crl.next_update
-                print(time.strftime("%Y-%m-%d %H:%M:%S"))
-                print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        return local_filename
 
-                return 
+    # Devolve issur do certificado certificado
+    def get_cert_issuer(self, cert):
+        return dict(cert.get_issuer().get_components())
 
-        """
-        i = 0
-        with self.token.open(user_pin = str(self.user_pin)) as session:
-            chain = open("my_chain.pem", "wb")
+    # Devolve Subject do certificado certificado
+    def get_cert_subject(self, cert):
+        return dict(cert.get_subject().get_components())
 
-            for cert in session.get_objects({Attribute.CLASS: ObjectClass.CERTIFICATE,}):
-                i = i + 1
-                print("--------------------------\nCertificado Nmr " + str(i) + "\n--------------------------")
-                cert = OpenSSL.crypto.load_certificate(
-                    OpenSSL.crypto.FILETYPE_ASN1,
-                    cert[Attribute.VALUE],
-                )
-                info = {}
+    # devolve as extensões na forma de um dicionário {"extentions": {chave: valor}}
+    def get_cert_extentions(self, cert):
+        info = {}
+        info["extentions"] = {} 
+        for value in range(0,cert.get_extension_count()):
+            c = cert.get_extension(value)
+            name = c.get_short_name()
 
-                info["subject"] = dict(cert.get_subject().get_components())
-                info["issuer"]  = dict(cert.get_issuer().get_components())
-                info["extentions"]  = {}
+            try:
+                c.__str__()
+            except Exception as e:
+                continue
 
-                for value in range(0,cert.get_extension_count()):
-                    try:
+            if name == b"freshestCRL":
+                info["extentions"]["delta_crl"]  = self.get_URI(c.__str__())
 
-                        c = cert.get_extension(value)
-                        info["extentions"][c.get_short_name()]  = c.__str__()
+            elif name == b"crlDistributionPoints":
+                info["extentions"]["base_crl"]  = self.get_URI(c.__str__())
 
-                    except Exception as e:
-                        pass
-                        #print("{0} failed".format(value))
-
-                # utf8 data
-                for key, value in info.items():
-                    for key1, value1 in value.items():
-                        try:
-                            info[key][key1] = value1.decode("UTF-8")
-                        except Exception as e:
-                            pass
+            elif name == b"authorityInfoAccess":
+                info["extentions"]["ocsp"]  = self.get_URI(c.__str__())
+            else:
+                info["extentions"][c.get_short_name()]  = c.__str__()
 
 
-
-                pprint(info)
-
-                print("\n---------------------\nCRLS e OCSP\n---------------------\n")
-                try:
-                    print(self.get_URI(info["extentions"][b"freshestCRL"]))
-                except Exception as e:
-                    print("No CRL DELTA")
-                    
-                try:
-                    print(self.get_URI(info["extentions"][b"crlDistributionPoints"]))
-                except Exception as e:
-                    print("No CRL")
-                    
-                try:
-                    print(self.get_URI(info["extentions"][b"authorityInfoAccess"])) 
-                except Exception as e:
-                    print("No OCSP")
-                
-
-
-                if i == 1:
-                    x = open("my.pem", "wb")
-                    x.write(OpenSSL.crypto.dump_certificate(
-                        OpenSSL.crypto.FILETYPE_PEM,
-                        cert,
-                    ))
-                    x.close()
-                chain.write(OpenSSL.crypto.dump_certificate(
-                    OpenSSL.crypto.FILETYPE_PEM,
-                    cert,
-                ))
-
-
-                print("\nImportant data about certificate:")
-                print("Has expired? {0}".format(cert.has_expired()))
-                print("Is valid? {0}\n".format(self.verify_certificate_chain(self.cert_chain, cert)))
-                
-                #break
-
-            chain.close()
-
-
+        return info
 
 
 if __name__ == '__main__':
     cc = CC_Interaction()
-
     cert = cc.get_my_cert()
-    chain = cc.get_cert_chain(cert)
 
-    cc.get_all_crls()
-    print(chain)
-    print(cc.get_crl_list_for_given_chain(chain))
+    data = "ganda lol ho ganda fdp"
 
-    print(cc.verify_certificate_chain(chain, cert))
+    signature = cc.sign(data)
 
-    #cc.validate_by_crl(cc.cert_chain, cert)
+    print(cc.validate_signature(data, signature, cert))
 
 
 
