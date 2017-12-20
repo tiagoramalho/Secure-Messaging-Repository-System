@@ -7,6 +7,7 @@ import sys
 
 sys.path.append(path.join(path.dirname(path.realpath(__file__)),'../modules/'))
 from DiffieHellman import DiffieHellman
+from cc_interection import Cert_Sign
 
 TERMINATOR = "\r\n"
 MAX_BUFSIZE = 64 * 1024
@@ -25,6 +26,19 @@ class Client:
         self.sa_data = None
         self.sessionKeys = DiffieHellman()
         self.blockChain = None
+
+        try:
+            pub = b""
+            priv = b""
+            pub_file = "Seguranca_Signed.pem"
+            private_file =  "NovaKey.pem"
+            with open(pub_file, "rb") as key_file:
+                pub = key_file.read()
+            with open(private_file, "rb") as key_file:
+                priv = key_file.read()
+            self.certSign = Cert_Sign(priv, pub)
+        except Exception as e:
+            print("exception")
 
     def __str__(self):
         """ Converts object into string.

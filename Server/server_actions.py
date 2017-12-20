@@ -255,7 +255,10 @@ class ServerActions:
         #verificar msg e assinatura
 
         if data["msg"]["status"] == 1:
-
+            try:
+                client.certSign.cert.validate_signature(json.dumps(msg, sort_keys =True), data["msg"]["signed"])
+            except Exception as e:
+                print("Nao e valido")
 
             msg = {"pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey), "status" : 2, "randomID" :data["msg"]["randomID"]}
             #sign = sign(msg)
