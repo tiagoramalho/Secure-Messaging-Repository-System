@@ -19,6 +19,8 @@ class ServerActions:
             'create': self.processCreate,
             'receipt': self.processReceipt,
             'status': self.processStatus
+            
+            
         }
 
         self.registry = ServerRegistry()
@@ -76,8 +78,8 @@ class ServerActions:
             client.sendResult({"error": "uuid already exists"})
             return
 
-        me = self.registry.addUser(data)
-        client.sendResult({"result": me.id})
+        me, responseID = self.registry.addUser(data)
+        client.sendResult({"result": me.id, "randomId" : responseID})
 
     def processList(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
@@ -88,11 +90,17 @@ class ServerActions:
             user = int(data['id'])
             userStr = "user%d" % user
 
+        if 'randomId' not in data.keys():
+            log(logging.ERROR, "No random id" + json.dumps(data))
+            client.sendResult({"error": "No random id"})
+
+
         log(logging.DEBUG, "List %s" % userStr)
 
+        responseID = data['randomId']
         userList = self.registry.listUsers(user)
 
-        client.sendResult({"result": userList})
+        client.sendResult({"result": userList, "randomId" : responseID})
 
     def processNew(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))

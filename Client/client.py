@@ -7,6 +7,7 @@ import json
 import os
 from os import path
 import sys
+import base64
 
 from random import randint
 #---------------------------------------------- 
@@ -15,8 +16,12 @@ sys.path.append(path.join(path.dirname(path.realpath(__file__)),'../modules/'))
 from cc_interection import CC_Interaction
 from asymmetric import Asy_Cyphers 
 from symmetric import Sym_Cyphers 
+from DiffieHellman import DiffieHellman
 
+
+ENCODING = 'utf-8'
 TERMINATOR = "\r\n"
+BUFSIZE = 512 * 1024
 
 def get_int(question):
     try:
@@ -53,10 +58,7 @@ class Client(object):
         self.id = self.get_self_ID()
         print(self.id) 
 
-        self.privShared = None #se poder usar o parameter como tenho posso ja por aqui
-        self.pubShared = None
-        self.sharedKey = None
-
+        self.sessionKeys = DiffieHellman()
         #assimetrica gerada por nos (nao do cc)
         self.AsyCypher = Asy_Cyphers(self.uuid)
 
@@ -74,10 +76,20 @@ class Client(object):
             Returns message box ID for the client UUID
             Returns None if it doesn't exist
         """
+        
+        msgID = randomMsgId() 
+        #falta a parte de assinar este msgID
+        self.listMsgID.append(msgID)
 
-        message = {'type' : 'list'}
+        message = {'type' : 'list',
+                   'randomId' : msgID}
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
+
+        if response.get('randomId') not in self.listMsgID:
+            print(msgID)
+            print(response.get('randomId'))
+            log_error("This randomId is not mine")
 
         if not response.get('error'):
             for x in response.get('result'):
@@ -94,20 +106,30 @@ class Client(object):
     def send_to_server(self, message):
         self.socket.sendall((json.dumps(message) +TERMINATOR).encode('utf-8'))
 
+    #temos de assinar os conteudos, verificar a resposta se vem assinada pelo servidor
+    #estou a verificar o randomId mas nao é a melhor maneira
+    #o que se pode fazer e quando se gera um novo random ID ele vir ja assinado
     def Create(self):
         msgID = randomMsgId() 
         #falta a parte de assinal este msgID
-        self.listMsgID.append(msgID) 
-         
+        self.listMsgID.append(msgID)
         message = { 'type' : 'create',
                     'uuid' : self.uuid,
+                    'publicKey' : self.AsyCypher.getPub().decode(ENCODING),
+                    'cert' : self.cc.getCertPem().decode(ENCODING),
                     'randomId': msgID
                   }
         print(message)
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
         #verificar o msgID se esta na lista de enviados? e verificar assinatura
         print(response)
+        
+        if response.get('randomId') not in self.listMsgID:
+            print(msgID)
+            print(response.get('randomId'))
+            log_error("This randomId is not mine")
+
         if response.get('error'):
             log_error("This uuid already has a message box")
 
@@ -117,13 +139,16 @@ class Client(object):
 
 
     def List(self, uid = None):
+        msgID = randomMsgId() 
+        #falta a parte de assinal este msgID
+        self.listMsgID.append(msgID) 
         if uid == None:
-            message = {'type' : 'list'}
+            message = {'type' : 'list', 'randomId' : msgID}
         else:
-            message = {'type' : 'list', 'id' : uid}
+            message = {'type' : 'list', 'id' : uid, 'randomId' : msgID}
 
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
 
         if response.get('error'):
             log_error(response.get('error'))
@@ -141,7 +166,7 @@ class Client(object):
                   }
         
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
 
         if response.get('error'):
             log_error(response.get('error'))
@@ -157,7 +182,7 @@ class Client(object):
     def All(self, uid):
         message = {'type' : 'all', 'id' : uid}
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
         if response.get('error'):
             log_error(response.get('error'))
         else:
@@ -165,15 +190,18 @@ class Client(object):
 
     def Send(self, dst, msg, src = None):
         src = self.id if src == None else src
+        print("encode")
+        print(bytes(msg,'utf-8'))
+        txtEnc = self.AsyCypher.cyph(bytes(msg, 'utf-8'))
         message = { 'type'	: 'send', 
                     'src'	: src,
                     'dst'	: dst,
-                    'msg'	: msg,
-                    'copy'	: msg
+                    'msg'	: txtEnc.decode(ENCODING),
+                    'copy'	: txtEnc.decode(ENCODING),
                   }
 
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
         print(response)
 
 
@@ -184,11 +212,14 @@ class Client(object):
                   }
 
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
         if response.get('error'):
             log_error(response.get('error'))
         else:
-            print(response)
+            txtEnc = response.get('result')[1].encode(ENCODING)
+            txtDenc = self.AsyCypher.decyph(txtEnc)
+            print(txtDenc)
+            print(txtDenc.decode('utf-8'))
                 
 
     def Receipt(self, box):
@@ -201,7 +232,7 @@ class Client(object):
         self.send_to_server(message)
         self.socket.settimeout(0.5)
         try:
-            response = json.loads(self.socket.recv(1024).decode('utf-8'))
+            response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
             log_error(response.get('error'))
         except:
             log_success("Sent")
@@ -215,7 +246,7 @@ class Client(object):
                   }
 
         self.send_to_server(message)
-        response = json.loads(self.socket.recv(1024).decode('utf-8'))
+        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
         if response.get('error'):
             log_error(response.get('error'))
         else:

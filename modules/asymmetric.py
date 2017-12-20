@@ -9,6 +9,7 @@ import json
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
+from pkcs11.util.rsa import encode_rsa_public_key
 import os
 import sys
 
@@ -41,7 +42,6 @@ class Asy_Cyphers(object):
         self.pub_file = str(uuid) + "_pub.pem"
         self.private_file =  str(uuid) + "_priv.pem"
         try: 
-            print("try")
             with open(self.pub_file, "rb") as key_file:
                 self.public_key = serialization.load_pem_public_key(
                     key_file.read(),
@@ -58,21 +58,21 @@ class Asy_Cyphers(object):
             print("exception")
             self.private_key = rsa.generate_private_key(
                     public_exponent=65537,
-                    key_size=512,
+                    key_size=4096,
                     backend=default_backend()
             )
             self.public_key = self.private_key.public_key()
             self.save_keys()
 
 
-        """self.sim_cypher = Sim_Cypher( 	in_file=self.file_to_cyph,
-                                        cyph_file=self.cyphed_file,
-                                        decyph_file=self.decyphed_file,
-                                        block_size = 16,
-                                        key_size = self.key_size,
-                                        mode="CBC")"""
 
-
+    
+    def getPub(self):
+        public_key = self.public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        return base64.b64encode(public_key)
 
     def save_keys(self):
         private_file = open(self.private_file, "wb+")
@@ -96,67 +96,69 @@ class Asy_Cyphers(object):
         private_file.close()
         pub_file.close()
 
-    def cyph(self):
+    def cyph(self, txt):
         # Kpub  -> pertence a todos
         # kpriv -> pertence ao dono
         # T     -> texto
         #Ks     -> chave simetrica
-
         #encript_sim(T,Ks) encript_asim(Ks + dados, Kpub) -> confidenciabilidade hibrida
-
-
         # c= encript(T,Ks)
         #Hash(c)-> encript(Kpriv, H(c)) -> Autenticidade
 
-        self.sim_cypher.cyph_file()
-        key = self.sim_cypher.key
-        iv = self.sim_cypher.iv
+        sym_cypher = Sym_Cyphers(block_size = 16,
+                                key_size = 256,
+                                mode="CBC")
+        cypheredText = sym_cypher.cyph_text(txt)
+        print("texto cifrado assimetrico")
+        print(cypheredText)
+        key = sym_cypher.key
+        iv = sym_cypher.iv
         padd = os.urandom(32) # padding
         # ks a baixo  = ks + dados
 
         ks = {"padding": padd, "iv": iv, "key": key}
 
 
-        ciphered_key = self.public_key.encrypt( dumps(ks),
-                                              padding.OAEP( mgf=padding.MGF1(algorithm=hashes.SHA1()),
-                                                            algorithm=hashes.SHA1(),
+        ciphered_key = self.public_key.encrypt(dumps(ks),
+                                              padding.OAEP( mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                                            algorithm=hashes.SHA256(),
                                                             label=None
                                                           )
                                             )
+        hibrid_data = (base64.b64encode(cypheredText) + bytes("\n", "utf-8") + base64.b64encode(ciphered_key))
 
-
-        ciphered_text = open(self.cyphed_file, "rb").read()
-
-        hibrid_data = open("intermidiate_data", "wb+")
-        hibrid_data.write(base64.b64encode(ciphered_text) + bytes("\n", "utf-8") + base64.b64encode(ciphered_key))
-        hibrid_data.close()
-        
-    def decyph(self):
-        intermidiate_data = open("intermidiate_data", "rb").read().split(bytes("\n", "utf-8"))
+        return hibrid_data 
+    def decyph(self, data):
+        intermidiate_data = data.split(bytes("\n", "utf-8"))
         intermidiate_data = intermidiate_data
 
         ciphered_text = base64.b64decode(intermidiate_data[0])
+        print("decypher text")
+        print(ciphered_text)
         ciphered_key = base64.b64decode(intermidiate_data[1])
 
         # ks a baixo  = ks + dados
         ks = self.private_key.decrypt(
                     ciphered_key,
                     padding.OAEP(
-                        mgf=padding.MGF1(algorithm=hashes.SHA1()),
-                        algorithm=hashes.SHA1(),
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
                         label=None)
                     )
         
         ks = loads(ks)
 
-        iv = ks.get("iv")
-        key = ks.get("key")
+        ivUsed = ks.get("iv")
+        keyUsed = ks.get("key")
 
-        self.sim_cypher.iv = iv
-        self.sim_cypher.key = key
+        sym_cypher = Sym_Cyphers(block_size = 16,
+                                key_size = 256,
+                                mode="CBC", 
+                                key = keyUsed, 
+                                iv = ivUsed)
 
-        self.sim_cypher.decyph_file()
-
+        plainText = sym_cypher.decyph_text(ciphered_text)
+        return plainText
 
 
 if __name__ == "__main__":

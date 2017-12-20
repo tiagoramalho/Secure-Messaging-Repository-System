@@ -9,15 +9,15 @@ import sys
 
 class Sym_Cyphers(object):
     """docstring for Sym_Cyphers"""
-    def __init__(self, uuid, block_size = 16, key_size=256, mode="CBC"):
+    def __init__(self, block_size = 16, key_size=256, mode="CBC", key = None, iv = None):
 
-        self.in_file_name = str(uuid) + "_symetric.pem" 
+        #self.in_file_name = str(uuid) + "_symetric.pem" 
 
         self.block_size = block_size
         self.key_size = key_size
         self.backend = default_backend()
-        self.key =  os.urandom(self.key_size//8)
-        self.iv =  os.urandom(self.block_size)
+        self.key =  os.urandom(self.key_size//8) if key == None else key
+        self.iv =  os.urandom(self.block_size) if iv == None else iv
         self.padder = padding.PKCS7(self.block_size*8).padder()
         self.unpadder = padding.PKCS7(self.block_size*8).unpadder()
 
@@ -34,57 +34,33 @@ class Sym_Cyphers(object):
         self.decryptor = self.cipher.decryptor()
 
     def cyph_text(self, text):
-        text = [text[i:i+self.block_size] for i in range(0, len(text), self.block_size)]
-        msg = ""
-        for x in text:
-            if len(x) == self.block_size:
-                msg += self.encryptor.update(x)
+        print("TEXT")
+        print(text)
+        msg = b""
 
-            else:
-                self.padder.update(x)
-                msg = self.padder.finalize()
-                msg +=  self.encryptor.update(msg) + self.encryptor.finalize()
-                break
+        dataPadded = self.padder.update(text)
+        dataPadded += self.padder.finalize()
+        print(dataPadded)
+
+        msg =  self.encryptor.update(dataPadded) + self.encryptor.finalize()
 
         return msg
 
 
     def decyph_text(self, text):
-        text = [text[i:i+self.block_size] for i in range(0, len(text), self.block_size)]
+        
+        print("decyph text")
+        msg = b""
+        print(text)
+        msg = self.decryptor.update(text) + self.decryptor.finalize()
+        print(msg)
 
-        try:
-            next_block = text[0]
-        except:
-            raise NameError("Passed text is empty")
-
-        for value in range(1, len(text)):
-            print(value)
-            x = next_block
-            if len(x) == self.block_size:
-
-                try:
-                    next_block = text[value]
-                except:
-                    next_block = ""
-                    print("Final block")
+        data = self.unpadder.update(msg)
+        unpad = data + self.unpadder.finalize()
 
 
-                if len(next_block) == 0:
-                    msg = self.decryptor.update(x) + self.decryptor.finalize()
 
-                    data = self.unpadder.update(msg)
-                    unpad = self.unpadder.finalize()
-                    self.decifrado.write(unpad)
-                    break
-
-
-                msg = self.decryptor.update(x)
-                self.decifrado.write(msg)
-
-            elif len(x) != 0 and len(x) != self.block_size:
-                raise NameError("len(x) != block_size") 
-            else:
-                break
+        return unpad 
 
 
     def cyph_file(self):
@@ -163,12 +139,15 @@ class Sym_Cyphers(object):
             pass
 
 if __name__ == "__main__":
-    x = Sym_Cyphers( in_file=sys.argv[1], cyph_file="cifrado_AES_CBC.bmp", decyph_file="decifrado_AES_CBC.bmp", block_size = 16, key_size = 256, mode="CBC")
+    x = Sym_Cyphers()
+    msg = "salhdlsakjhdjkashjkdhsajkhdjkashjkdhajkshdjkh ashdjksahd o branco "
+    f = bytes(msg, 'utf-8')
+    print(f)
+    enc = x.cyph_text(f)
+    dec = x.decyph_text(enc)
+    print(dec)
+    print(dec.decode('utf-8'))
 
-    x.cyph()
-    x.decyph()
-
-    x.close_all()
 
 
 
