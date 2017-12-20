@@ -61,7 +61,7 @@ class CC_Interaction(object):
             self.user_pin = getpass.getpass("PIN ?")
             self.crls_updated = False
             self.cert = self.get_my_cert()
-            #self.get_all_crls()
+            self.get_all_crls()
         except (TokenNotPresent, NoSuchToken, IndexError):
             print("Please insert the Citizen Card\n Exiting...")
             raise e
@@ -129,8 +129,6 @@ class CC_Interaction(object):
             all_crl_list = list(filter(lambda a: a != None, all_crl_list))
 
 
-            #Verificações por OCSP + CRL List Restante
-
             if test_internet_on():
                 if False in [self.ocsp_validation(x[0], x[1]) for x in ocsp_list]:
                     raise NameError('Certificate invalid: OCSP verification')
@@ -156,9 +154,6 @@ class CC_Interaction(object):
     # Verifica a cadeia de certificação mas não vê se foi revogado.
     def verify_certificate_chain(self, cert, chain, crl_list):
         crl_list = self.crl_files_to_objects(crl_list)
-
-        print(crl_list)
-
         certificate = cert
 
         try:
@@ -323,7 +318,6 @@ class CC_Interaction(object):
         except Exception as e:
             return None
 
-
     def crl_files_to_objects(self, files):
 
         path = os.path.join(self.dir, "crls")
@@ -342,7 +336,6 @@ class CC_Interaction(object):
         base = self.get_cert_extentions(cert)["extentions"].get("base_crl")
         delta = self.get_cert_extentions(cert)["extentions"].get("delta_crl")
         return (base, delta)
-
 
     # Faz download de uma Revocation List Especifica 
     def get_crl(self,crl_link):
@@ -400,19 +393,11 @@ class CC_Interaction(object):
             return None
 
 
-
-
-
-
-
-
 if __name__ == '__main__':
     cc = CC_Interaction()
     cert = cc.get_my_cert()
 
     chain = cc.get_cert_chain(cert)
-
-
 
     data = "ganda lol ho ganda fdp"
 
