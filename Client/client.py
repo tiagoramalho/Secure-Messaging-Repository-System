@@ -23,6 +23,7 @@ from DiffieHellman import DiffieHellman
 from BlockChain import Block 
 from asymmetric import derivateKey
 import ourCrypto
+import sessionConnect
 
 
 ENCODING = 'utf-8'
@@ -53,7 +54,6 @@ class Client(object):
             log_error("Error connecting with the server")
             raise
             return
-        self.listMsgID = []
         self.cc = CC_Interaction()
         try:
             self.uuid = self.cc.get_pubkey_hash_int() 
@@ -278,33 +278,7 @@ if __name__ == "__main__":
 
     try:
         client = Client()
-        msg = {"status" : 1, "randomID" : randomMsgId()}
-        message = { 'type'	: 'session', 
-                    'msg'	: msg,  
-                    'signed'	: "assinatura da msg",
-                  }
-
-        client.send_to_server(message)
-        response = json.loads(client.socket.recv(BUFSIZE).decode('utf-8'))
-        #verificar assinatura e se os randomMsgId sao iguais
-        client.sessionKeys.getSecret(ourCrypto.recvPubKey(response["result"]["pubKey"]))
-
-        
-        msg = {"status" : 2, "pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey)}
-#        client.sessionKeys.pubKey
-        key, salt = client.sessionKeys.deriveShared()
-        msg["salt"] = ourCrypto.sendBytes(salt)
-
-        hashS = ourCrypto.verifyHash(0, '0', json.dumps(msg, sort_keys = True), key)
-        client.blockChain = Block(0, '0',msg, hashS) 
-        message = { 'type'	: 'session', 
-                    'msg'	: msg,  
-                    'signed'	: "assinatura da msg",
-                    'hash'      : ourCrypto.sendBytes(hashS),
-                  }
-        client.send_to_server(message)
-        response = json.loads(client.socket.recv(BUFSIZE).decode('utf-8'))
-        print(response)
+        ok = sessionConnect.sessionConnect(client)
         #self.id = self.get_self_ID()
                 
     except Exception as e:

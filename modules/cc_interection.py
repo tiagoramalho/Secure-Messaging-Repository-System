@@ -62,7 +62,7 @@ class CC_Interaction(object):
             self.user_pin = getpass.getpass("PIN ?")
             self.crls_updated = False
             self.cert = self.get_my_cert()
-            self.get_all_crls()
+#            self.get_all_crls()
         except (TokenNotPresent, NoSuchToken, IndexError):
             print("Please insert the Citizen Card\n Exiting...")
             raise e
@@ -106,7 +106,8 @@ class CC_Interaction(object):
     # Ver se significado inválido
     def validate_signature(self, data, signature, certificate):
         if test_internet_on() and not self.crls_updated:
-            self.get_all_crls()             #Updating crl's
+            #self.get_all_crls()             #Updating crl's
+            pass
 
         try:
             chain = self.get_cert_chain(certificate)

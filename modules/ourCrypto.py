@@ -34,4 +34,6 @@ def verifyHash(index, previousHash, data, key):
     newHash = h.finalize()
     return newHash
 
+def randomMsgId():
+    return int.from_bytes(os.urandom(16), byteorder="big")
 

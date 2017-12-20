@@ -248,13 +248,14 @@ class ServerActions:
     def processSession(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
 
-        if not set({'type', 'msg', 'signed'}).issubset(set(data.keys())):
+        if not set({'type', 'msg', 'signed', 'cert'}).issubset(set(data.keys())):
             log(logging.ERROR, "Badly formated \"status\" message: " +
                 json.dumps(data))
             client.sendResult({"error": "wrong session message format"})
         #verificar msg e assinatura
 
         if data["msg"]["status"] == 1:
+
 
             msg = {"pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey), "status" : 2, "randomID" :data["msg"]["randomID"]}
             #sign = sign(msg)
