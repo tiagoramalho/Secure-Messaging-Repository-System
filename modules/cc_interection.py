@@ -34,6 +34,10 @@ from oscrypto import asymmetric
 from ocspbuilder import OCSPRequestBuilder
 
 
+
+
+
+
 # Testa connectividade
 def test_internet_on():
     try:
@@ -50,67 +54,36 @@ def test_internet_on():
 
 
 
-class CC_Interaction(object):
-    """docstring for cc_interaction"""
-    def __init__(self):
-        super(CC_Interaction, self).__init__()
-        self.dir = os.path.dirname(os.path.realpath(__file__))
+class Certificate(object):
+    """docstring for Certificate"""
+    crls_updated = False
+    def __init__(self, certificate):
+
         try:
-            print("Getting token_label...")
-            self.lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
-            self.token = self.lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
-            self.user_pin = getpass.getpass("PIN ?")
-            self.crls_updated = False
-            self.cert = self.get_my_cert()
-#            self.get_all_crls()
-        except (TokenNotPresent, NoSuchToken, IndexError):
-            print("Please insert the Citizen Card\n Exiting...")
-            raise e
-            #sys.exit(-1)
+            if not isinstance(certificate, crypto.X509):
+                raise NameError("Not instance")
+            self.certificate = certificate
         except Exception as e:
-            raise e
+            try:
+                self.certificate = self.load_certificate(certificate)
+            except Exception as e:
+                raise e
+
+        self.dir = os.path.dirname(os.path.realpath(__file__))
+        self.get_all_crls()
 
 
-
-    #Funções Ramalhão
-    def getPublicKeyCC(self):
-        with self.token.open(user_pin = str(self.user_pin)) as session:
-            pub = session.get_key(pkcs11.constants.ObjectClass.PUBLIC_KEY,
-                pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION CERTIFICATE")
-            pem = encode_rsa_public_key(pub)
-        return pem
-
-    def get_pubkey_hash_int(self):
-        pub = self.getPublicKeyCC()
-        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
-        digest.update(pub)
-        uuid = digest.finalize()
-        uuid = int.from_bytes(uuid, byteorder='big')
-        return uuid
-
-    # Assina tem de ser alterada e dividida em duas TODO
-    def sign(self, data):
-
-        with self.token.open(user_pin = str(self.user_pin)) as session:
-
-            priv = session.get_key(pkcs11.constants.ObjectClass.PRIVATE_KEY,
-                pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION KEY")
-
-
-            signature = priv.sign(data, mechanism=pkcs11.Mechanism.SHA1_RSA_PKCS)
-
-            return signature
-
+        
 
 
     # Ver se significado inválido
-    def validate_signature(self, data, signature, certificate):
-        if test_internet_on() and not self.crls_updated:
+    def validate_signature(self, data, signature):
+        if test_internet_on() and not Certificate.crls_updated:
             #self.get_all_crls()             #Updating crl's
             pass
 
         try:
-            chain = self.get_cert_chain(certificate)
+            chain = self.get_cert_chain(self.certificate)
             ocsp_list = []
             crl_list = []
             all_crl_list = []
@@ -134,23 +107,17 @@ class CC_Interaction(object):
             if test_internet_on():
                 if False in [self.ocsp_validation(x[0], x[1]) for x in ocsp_list]:
                     raise NameError('Certificate invalid: OCSP verification')
-                self.verify_certificate_chain(certificate, chain, crl_list)
+                self.verify_certificate_chain(self.certificate, chain, crl_list)
 
             else: 
-                self.verify_certificate_chain(certificate, chain, all_crl_list)
+                self.verify_certificate_chain(self.certificate, chain, all_crl_list)
 
-
-
-
-
-            verification = crypto.verify(certificate, signature, data, "sha1")
+            verification = crypto.verify(self.certificate, signature, data, "sha256")
             return True
         except Exception as e:
             print("Failed encryption")
             raise e
 
-            #return False
-        
 
 
     # Verifica a cadeia de certificação mas não vê se foi revogado.
@@ -177,6 +144,114 @@ class CC_Interaction(object):
 
         except Exception as e:
             raise e
+
+
+    def load_certificate(self, cert):
+        try:
+            return crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+        except Exception as e:
+            raise e
+
+    def dump_certificate(self, cert):
+        try:
+            return crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+        except Exception as e:
+            raise e
+
+    # Faz download de todas as Revocation Lists
+
+    def get_all_crls(self):
+
+        if not test_internet_on():
+            print("No internet connection to update CRL's")
+            return
+        elif Certificate.crls_updated == True:
+            return
+
+        print("Internet connection detected. Updating CRL's...")
+
+        path = os.path.join(self.dir, "certs")
+        for file in os.listdir(path):
+            if file.endswith(".pem"):
+
+                path = os.path.join(self.dir, "certs", file)
+                cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(path, "r").read())
+                extentions = self.get_cert_extentions(cert)
+
+                base_crl = extentions["extentions"].get("base_crl", None)
+                delta_crl = extentions["extentions"].get("delta_crl", None)
+
+                self.get_crl(base_crl)
+                self.get_crl(delta_crl)
+
+
+        path = os.path.join(self.dir, "certs", file)
+        extentions = self.get_cert_extentions(self.certificate)
+
+        base_crl = extentions["extentions"].get("base_crl", None)
+        delta_crl = extentions["extentions"].get("delta_crl", None)
+
+        self.get_crl(base_crl)
+        self.get_crl(delta_crl)
+
+        Certificate.crls_updated = True
+
+
+    # Faz download de uma Revocation List Especifica 
+    def get_crl(self,crl_link):
+        if crl_link == None:
+            return
+
+        local_filename = str(crl_link.split('/')[-1])
+
+        r = requests.get(crl_link, stream=True)
+        path = os.path.join(self.dir, "crls", local_filename)
+        with open(path, 'wb') as f:
+            shutil.copyfileobj(r.raw, f)
+
+        return local_filename
+
+
+    # devolve as extensões na forma de um dicionário {"extentions": {chave: valor}}
+    def get_cert_extentions(self, cert):
+        info = {}
+        info["extentions"] = {} 
+        for value in range(0,cert.get_extension_count()):
+            c = cert.get_extension(value)
+            name = c.get_short_name()
+
+            try:
+                c.__str__()
+            except Exception as e:
+                continue
+
+            if name == b"freshestCRL":
+                info["extentions"]["delta_crl"]  = self.get_URI(c.__str__())
+
+            elif name == b"crlDistributionPoints":
+                info["extentions"]["base_crl"]  = self.get_URI(c.__str__())
+
+            elif name == b"authorityInfoAccess":
+                info["extentions"]["ocsp"]  = self.get_URI(c.__str__())
+            else:
+                info["extentions"][c.get_short_name()]  = c.__str__()
+
+        return info
+
+    # Devolve o URI por causa da porcaria do ASN1. Vi-me obrigado  a Improvisar
+    def get_URI(self, s):
+        return (s.split("URI:"))[1].split("\n")[0]
+
+
+    def crl_files_to_objects(self, files):
+
+        path = os.path.join(self.dir, "crls")
+        obj_list = []
+        for file in files:
+            with open(os.path.join(path, file), 'rb') as f:
+
+                obj_list.append(OpenSSL.crypto.load_crl(crypto.FILETYPE_ASN1, f.read()))
+        return obj_list
 
 
 
@@ -207,58 +282,6 @@ class CC_Interaction(object):
         if issuer == subject:
             return chain
         return False
-
-    # Devolve o próprio certificado
-    def get_my_cert(self):
-        with self.token.open(user_pin = str(self.user_pin)) as session:
-            for cert in session.get_objects({Attribute.CLASS: ObjectClass.CERTIFICATE,}):
-                cert = OpenSSL.crypto.load_certificate(
-                    OpenSSL.crypto.FILETYPE_ASN1,
-                    cert[Attribute.VALUE],
-                )
-                return cert
-
-    #devolve o cert em formato PEM
-    def getCertPem(self):
-        print("ENTROY")
-        return base64.b64encode(OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, self.get_my_cert()))
-    # Faz download de todas as Revocation Lists
-    def get_all_crls(self):
-
-        if not test_internet_on():
-            print("No internet connection to update CRL's")
-            return
-        elif self.crls_updated == True:
-            return
-
-        print("Internet connection detected. Updating CRL's...")
-
-        path = os.path.join(self.dir, "certs")
-        for file in os.listdir(path):
-            if file.endswith(".pem"):
-
-                path = os.path.join(self.dir, "certs", file)
-                cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(path, "r").read())
-                extentions = self.get_cert_extentions(cert)
-
-                base_crl = extentions["extentions"].get("base_crl", None)
-                delta_crl = extentions["extentions"].get("delta_crl", None)
-
-                self.get_crl(base_crl)
-                self.get_crl(delta_crl)
-
-
-        path = os.path.join(self.dir, "certs", file)
-        extentions = self.get_cert_extentions(self.cert)
-
-        base_crl = extentions["extentions"].get("base_crl", None)
-        delta_crl = extentions["extentions"].get("delta_crl", None)
-
-        self.get_crl(base_crl)
-        self.get_crl(delta_crl)
-
-        self.crls_updated = True
-
 
     def get_crl_list_for_given_chain(self, chain):
         list_crl_chain = []
@@ -323,38 +346,12 @@ class CC_Interaction(object):
         except Exception as e:
             return None
 
-    def crl_files_to_objects(self, files):
-
-        path = os.path.join(self.dir, "crls")
-        obj_list = []
-        for file in files:
-            with open(os.path.join(path, file), 'rb') as f:
-
-                obj_list.append(OpenSSL.crypto.load_crl(crypto.FILETYPE_ASN1, f.read()))
-        return obj_list
-
-    # Devolve o URI por causa da porcaria do ASN1. Vi-me obrigado  a Improvisar
-    def get_URI(self, s):
-        return (s.split("URI:"))[1].split("\n")[0]
 
     def get_crl_links(self, cert):
         base = self.get_cert_extentions(cert)["extentions"].get("base_crl")
         delta = self.get_cert_extentions(cert)["extentions"].get("delta_crl")
         return (base, delta)
 
-    # Faz download de uma Revocation List Especifica 
-    def get_crl(self,crl_link):
-        if crl_link == None:
-            return
-
-        local_filename = str(crl_link.split('/')[-1])
-
-        r = requests.get(crl_link, stream=True)
-        path = os.path.join(self.dir, "crls", local_filename)
-        with open(path, 'wb') as f:
-            shutil.copyfileobj(r.raw, f)
-
-        return local_filename
 
     # Devolve issur do certificado certificado
     def get_cert_issuer(self, cert):
@@ -364,32 +361,6 @@ class CC_Interaction(object):
     def get_cert_subject(self, cert):
         return dict(cert.get_subject().get_components())
 
-    # devolve as extensões na forma de um dicionário {"extentions": {chave: valor}}
-    def get_cert_extentions(self, cert):
-        info = {}
-        info["extentions"] = {} 
-        for value in range(0,cert.get_extension_count()):
-            c = cert.get_extension(value)
-            name = c.get_short_name()
-
-            try:
-                c.__str__()
-            except Exception as e:
-                continue
-
-            if name == b"freshestCRL":
-                info["extentions"]["delta_crl"]  = self.get_URI(c.__str__())
-
-            elif name == b"crlDistributionPoints":
-                info["extentions"]["base_crl"]  = self.get_URI(c.__str__())
-
-            elif name == b"authorityInfoAccess":
-                info["extentions"]["ocsp"]  = self.get_URI(c.__str__())
-            else:
-                info["extentions"][c.get_short_name()]  = c.__str__()
-
-
-        return info
 
     def get_ocsp_link(self, certificate):
         try:
@@ -397,18 +368,110 @@ class CC_Interaction(object):
         except Exception as e:
             return None
 
+class Cert_Sign(object):
+    """docstring for Cert_Sign"""
+    def __init__(self, cert, priv_key):
+        super(Cert_Sign, self).__init__()
+        self.priv_key = self.loads_priv(priv_key)
+        self.cert = Certificate(cert)
+
+    def loads_priv(self, priv_key):
+        return crypto.load_privatekey(crypto.FILETYPE_PEM, priv_key)
+
+
+
+    # Assina tem de ser alterada e dividida em duas TODO
+    def sign(self, data):
+        return crypto.sign(self.priv_key, data, "sha256")
+
+        
+        
+        
+
+class CC_Interaction(object):
+    """docstring for cc_interaction"""
+    def __init__(self):
+        super(CC_Interaction, self).__init__()
+        try:
+            print("Reading CC...")
+            self.lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
+            self.token = self.lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
+            self.user_pin = getpass.getpass("PIN ?")
+            self.cert = Certificate(self.get_my_cert())
+
+        except (TokenNotPresent, NoSuchToken, IndexError):
+            print("Please insert the Citizen Card\n Exiting...")
+            raise e
+            #sys.exit(-1)
+        except Exception as e:
+            raise e
+
+
+
+    #Funções Ramalhão
+    def getPublicKeyCC(self):
+        with self.token.open(user_pin = str(self.user_pin)) as session:
+            pub = session.get_key(pkcs11.constants.ObjectClass.PUBLIC_KEY,
+                pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION CERTIFICATE")
+            pem = encode_rsa_public_key(pub)
+        return pem
+
+    def get_pubkey_hash_int(self):
+        pub = self.getPublicKeyCC()
+        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        digest.update(pub)
+        uuid = digest.finalize()
+        uuid = int.from_bytes(uuid, byteorder='big')
+        return uuid
+
+    # Assina tem de ser alterada e dividida em duas TODO
+    def sign(self, data):
+        with self.token.open(user_pin = str(self.user_pin)) as session:
+            priv = session.get_key(pkcs11.constants.ObjectClass.PRIVATE_KEY,
+                pkcs11.KeyType.RSA, "CITIZEN AUTHENTICATION KEY")
+            signature = priv.sign(data, mechanism=pkcs11.Mechanism.SHA256_RSA_PKCS)
+
+            return signature
+
+
+    # Devolve o próprio certificado
+    def get_my_cert(self):
+        with self.token.open(user_pin = str(self.user_pin)) as session:
+            for cert in session.get_objects({Attribute.CLASS: ObjectClass.CERTIFICATE,}):
+                cert = OpenSSL.crypto.load_certificate(
+                    OpenSSL.crypto.FILETYPE_ASN1,
+                    cert[Attribute.VALUE],
+                )
+                return cert
+
+    """
+    #devolve o cert em formato PEM
+    def getCertPem(self):
+        print("ENTROY")
+        return base64.b64encode(OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, self.get_my_cert()))
+    
+
+    """
+
+
+    
+
+
 
 if __name__ == '__main__':
+
+
     cc = CC_Interaction()
     cert = cc.get_my_cert()
 
-    chain = cc.get_cert_chain(cert)
+    cert = Certificate(cc.get_my_cert())
 
     data = "ganda lol ho ganda fdp"
 
     signature = cc.sign(data)
 
-    print(cc.validate_signature(data, signature, cert))
+
+    print(cert.validate_signature(data, signature))
 
 
 
