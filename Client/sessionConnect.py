@@ -5,6 +5,7 @@ import sys
 
 sys.path.append(path.join(path.dirname(path.realpath(__file__)),'../modules/'))
 from BlockChain import Block 
+from cc_interection import Certificate
 import ourCrypto
 
 ENCODING = 'utf-8'
@@ -13,33 +14,58 @@ BUFSIZE = 512 * 1024
 
 def sessionConnect(client):
     randomID = ourCrypto.randomMsgId() 
-    msg = {"status" : 1, "randomID" : randomID} 
-    signature = client.cc.sign(json.dumps(msg, sort_keys = True))
+    payload = {"status" : 1, "randomID" : randomID} 
+    signature = client.cc.sign(json.dumps(payload, sort_keys = True))
     message = { 'type'	: 'session', 
-                'msg'	: msg,  
-                'signed'	: signature,
-                'cert' : client.cc.get_my_cert()
+                'payload'	: payload,
+                'signed' : ourCrypto.sendBytes(signature),
+                'cert' : ourCrypto.sendBytes(client.cc.cert.dump_certificate()),
               }
 
     client.send_to_server(message)
+
     response = json.loads(client.socket.recv(BUFSIZE).decode('utf-8'))
     #verificar assinatura e se os randomMsgId sao iguais
-    client.sessionKeys.getSecret(ourCrypto.recvPubKey(response["result"]["pubKey"]))
+    try:
+        client.certCertificate = Certificate(ourCrypto.recvBytes(response["result"]["cert"]))
+        valido = client.certCertificate.validate_signature(json.dumps(response["result"]["payload"], sort_keys =True), ourCrypto.recvBytes(response["result"]["signed"]))
+        print(valido)
+        if randomID == response["result"]["payload"]["randomID"]:
+            client.sessionKeys.getSecret(ourCrypto.recvPubKey(response["result"]["payload"]["pubKey"]))
+        else:
+            print("rando id errado")
+    except Exception as e:
+        print(e)
 
 
-    msg = {"status" : 2, "pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey)}
+    payload = {"status" : 2, "pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey)}
     #        client.sessionKeys.pubKey
     key, salt = client.sessionKeys.deriveShared()
-    msg["salt"] = ourCrypto.sendBytes(salt)
+    payload["salt"] = ourCrypto.sendBytes(salt)
 
-    hashS = ourCrypto.verifyHash(0, '0', json.dumps(msg, sort_keys = True), key)
-    client.blockChain = Block(0, '0',msg, hashS) 
+    hashS = ourCrypto.verifyHash(0, '0', json.dumps(payload, sort_keys = True), key)
+    client.blockChain = Block(0, '0',payload, hashS) 
+    payload["hash"] = ourCrypto.sendBytes(hashS)
+    signature = client.cc.sign(json.dumps(payload, sort_keys = True))
     message = { 'type'	: 'session', 
-                'msg'	: msg,  
-                'signed'	: "assinatura da msg",
-                'hash'      : ourCrypto.sendBytes(hashS),
+                'payload'	: payload,  
+                'signed' : ourCrypto.sendBytes(signature),
+                'cert' : ourCrypto.sendBytes(client.cc.cert.dump_certificate()),
               }
     client.send_to_server(message)
+    #Ultima resposta proveniente do servidor para troca de chaves
+    #tem de gerar a mesma hash do ack
+
     response = json.loads(client.socket.recv(BUFSIZE).decode('utf-8'))
     print(response)
+
+    hashS = ourCrypto.recvBytes(response["result"]["hash"])
+    del response["result"]["hash"]
+    salt = ourCrypto.recvBytes(response["result"]["salt"])
+    key, salt = client.sessionKeys.deriveShared(salt)
+    print(client.blockChain.isNextBlock(response["result"],key))
+    if hashS == client.blockChain.isNextBlock(response["result"],key):
+        self.blockChain.generateNextBlock(resposta["result"], key)
+    else:
+        print("puta")
     return True

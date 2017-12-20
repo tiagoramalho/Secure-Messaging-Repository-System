@@ -67,6 +67,7 @@ class Client(object):
         #assimetrica gerada por nos (nao do cc)
         self.AsyCypher = Asy_Cyphers(self.uuid)
         self.blockChain = None
+        self.certCertificate = None
 
         #if not self.id:
         #    log_info("Creating message box...")
