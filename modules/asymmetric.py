@@ -7,11 +7,18 @@ import base64
 import json
 
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.asymmetric import padding
 
 from pkcs11.util.rsa import encode_rsa_public_key
 import os
 import sys
+
+def derivateKey(key, salt):
+    salt = os.urandom(16)
+    kdf = PBKDF2HMAC( algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000, backend=backend) 
+    key = kdf.derive(key)
+    return key, salt
 
 def dumps(dic):
     # Padding, key, chave

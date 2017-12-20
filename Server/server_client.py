@@ -1,7 +1,12 @@
 import logging
 from log import *
 import json
+import os
+from os import path
 import sys
+
+sys.path.append(path.join(path.dirname(path.realpath(__file__)),'../modules/'))
+from DiffieHellman import DiffieHellman
 
 TERMINATOR = "\r\n"
 MAX_BUFSIZE = 64 * 1024
@@ -18,8 +23,8 @@ class Client:
         self.addr = addr
         self.id = None
         self.sa_data = None
-        self.sharedKey = None
-
+        self.sessionKeys = DiffieHellman()
+        self.blockChain = None
 
     def __str__(self):
         """ Converts object into string.

@@ -6,7 +6,21 @@ from log import *
 from server_registry import *
 from server_client import *
 import json
+import base64
+import os
+from os import path
+import sys
 
+sys.path.append(path.join(path.dirname(path.realpath(__file__)),'../modules/'))
+from DiffieHellman import DiffieHellman
+from BlockChain import Block 
+import ourCrypto
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.hazmat.backends import default_backend
+
+ENCODING = 'utf-8'
 class ServerActions:
     def __init__(self):
 
@@ -18,9 +32,9 @@ class ServerActions:
             'recv': self.processRecv,
             'create': self.processCreate,
             'receipt': self.processReceipt,
-            'status': self.processStatus
+            'status': self.processStatus,
             
-            
+            'session': self.processSession, 
         }
 
         self.registry = ServerRegistry()
@@ -230,3 +244,45 @@ class ServerActions:
 
         response = self.registry.getReceipts(fromId, msg)
         client.sendResult({"result": response})
+
+    def processSession(self, data, client):
+        log(logging.DEBUG, "%s" % json.dumps(data))
+
+        if not set({'type', 'msg', 'signed'}).issubset(set(data.keys())):
+            log(logging.ERROR, "Badly formated \"status\" message: " +
+                json.dumps(data))
+            client.sendResult({"error": "wrong session message format"})
+        #verificar msg e assinatura
+
+        if data["msg"]["status"] == 1:
+
+            msg = {"pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey), "status" : 2, "randomID" :data["msg"]["randomID"]}
+            #sign = sign(msg)
+            sign = "teste"
+            client.sendResult({"result": msg, "signed" : sign})
+            return
+
+        #se tiver valida
+        if data["msg"]["status"] == 2:
+            peer_pub_key = data["msg"]["pubKey"]
+
+            client.sessionKeys.getSecret(ourCrypto.recvPubKey(peer_pub_key))
+
+            
+            salt = ourCrypto.recvBytes(data["msg"]["salt"])
+            key, salt = client.sessionKeys.deriveShared(salt)
+            serverHash = ourCrypto.verifyHash(0,'0', json.dumps(data["msg"], sort_keys = True),key)
+
+            if serverHash ==  ourCrypto.recvBytes(data["hash"]):
+                client.blockChain = Block(0, '0', data["msg"], data["hash"])
+                msg = {"ack" : "yes"}
+                client.blockChain.generateNextBlock(msg, client.sessionKeys.sharedKey)
+                msg["hash"] = ourCrypto.sendBytes(client.blockChain.currentHash) 
+                client.sendResult({"result": msg})
+                return
+            else:
+                log(logging.ERROR, "Badly hash " +
+                    json.dumps(data))
+                client.sendResult({"error": "wrong hash msg"})
+                return
+

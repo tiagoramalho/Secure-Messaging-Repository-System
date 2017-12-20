@@ -86,7 +86,6 @@ class ServerRegistry:
     def userExists(self, uid):
         return self.getUser(uid) is not None
 
-    #Funcao criada por nos
     def userExistsUuid(self, uid):
         for x in self.users.items():
             if uid == x[1]["description"]["uuid"]:

@@ -1,12 +1,8 @@
-#from cryptography.hazmat.backends import default_backend
-#from cryptography.hazmat.primitives.asymmetric import dh
-#import os
-#from cryptography.hazmat.primitives import hashes
-#from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-#from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import ec
-
+import os
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 
 class DiffieHellman(object):
@@ -23,6 +19,19 @@ class DiffieHellman(object):
         self.pubKey = self.privKey.public_key()
         self.sharedKey = self.privKey.exchange(ec.ECDH(), peer_public_key)
 
+    def deriveShared(self, salt = None):
+        saltN = salt if salt != None else os.urandom(16) 
+        info = b"is-just-info"
+        hkdf = HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=saltN,
+            info=info,
+            backend=default_backend()
+        )
+        key = hkdf.derive(self.sharedKey)
+
+        return key, saltN
 if __name__ == "__main__":
     
     v = DiffieHellman()
