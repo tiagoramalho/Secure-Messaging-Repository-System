@@ -18,6 +18,10 @@ class Block:
         nextHash = h.finalize()
         return nextHash
 
+    def isNextBlock(self,blockData, key):
+        nextIndex = self.index + 1
+        return self.calculateHash(nextIndex, self.currentHash, blockData, key)
+        
     def generateNextBlock(self,blockData, key):
         nextIndex = self.index + 1
         nextHash = self.calculateHash(nextIndex, self.currentHash, blockData, key)

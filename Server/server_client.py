@@ -26,6 +26,7 @@ class Client:
         self.sa_data = None
         self.sessionKeys = DiffieHellman()
         self.blockChain = None
+        self.clientCertificate = None
 
         try:
             pub = b""
@@ -36,9 +37,9 @@ class Client:
                 pub = key_file.read()
             with open(private_file, "rb") as key_file:
                 priv = key_file.read()
-            self.certSign = Cert_Sign(priv, pub)
+            self.certServe = Cert_Sign(pub, priv)
         except Exception as e:
-            print("exception")
+            print(e)
 
     def __str__(self):
         """ Converts object into string.

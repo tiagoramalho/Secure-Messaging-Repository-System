@@ -14,6 +14,7 @@ import sys
 sys.path.append(path.join(path.dirname(path.realpath(__file__)),'../modules/'))
 from DiffieHellman import DiffieHellman
 from BlockChain import Block 
+from cc_interection import Certificate
 import ourCrypto
 
 from cryptography.hazmat.primitives import serialization
@@ -248,45 +249,60 @@ class ServerActions:
     def processSession(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
 
-        if not set({'type', 'msg', 'signed', 'cert'}).issubset(set(data.keys())):
+        if not set({'type', 'payload', 'signed', 'cert'}).issubset(set(data.keys())):
             log(logging.ERROR, "Badly formated \"status\" message: " +
                 json.dumps(data))
             client.sendResult({"error": "wrong session message format"})
-        #verificar msg e assinatura
+        #verificar payload e assinatura
 
-        if data["msg"]["status"] == 1:
+        if data["payload"]["status"] == 1:
             try:
-                client.certSign.cert.validate_signature(json.dumps(msg, sort_keys =True), data["msg"]["signed"])
+                client.clientCertificate = Certificate(ourCrypto.recvBytes(data["cert"]))
+                valido = client.clientCertificate.validate_signature(json.dumps(data["payload"], sort_keys =True), ourCrypto.recvBytes(data["signed"]))
+                print(valido)
             except Exception as e:
-                print("Nao e valido")
+                print(e)
 
-            msg = {"pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey), "status" : 2, "randomID" :data["msg"]["randomID"]}
-            #sign = sign(msg)
-            sign = "teste"
-            client.sendResult({"result": msg, "signed" : sign})
+            payload = {"pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey), "status" : 2, "randomID" :data["payload"]["randomID"]}
+            #sign = sign(payload)
+            client.sendResult(client.certServe.generate(payload))
             return
 
         #se tiver valida
-        if data["msg"]["status"] == 2:
-            peer_pub_key = data["msg"]["pubKey"]
+        if data["payload"]["status"] == 2:
+            try:
+                client.clientCertificate = Certificate(ourCrypto.recvBytes(data["cert"]))
+                valido = client.clientCertificate.validate_signature(json.dumps(data["payload"], sort_keys =True), ourCrypto.recvBytes(data["signed"]))
+                print(valido)
+            except Exception as e:
+                print(e)
+
+            peer_pub_key = data["payload"]["pubKey"]
 
             client.sessionKeys.getSecret(ourCrypto.recvPubKey(peer_pub_key))
 
             
-            salt = ourCrypto.recvBytes(data["msg"]["salt"])
+            salt = ourCrypto.recvBytes(data["payload"]["salt"])
             key, salt = client.sessionKeys.deriveShared(salt)
-            serverHash = ourCrypto.verifyHash(0,'0', json.dumps(data["msg"], sort_keys = True),key)
+            hashS = ourCrypto.recvBytes(data["payload"]["hash"])
+            del data["payload"]["hash"]
+            serverHash = ourCrypto.verifyHash(0,'0', json.dumps(data["payload"], sort_keys = True),key)
 
-            if serverHash ==  ourCrypto.recvBytes(data["hash"]):
-                client.blockChain = Block(0, '0', data["msg"], data["hash"])
-                msg = {"ack" : "yes"}
-                client.blockChain.generateNextBlock(msg, client.sessionKeys.sharedKey)
-                msg["hash"] = ourCrypto.sendBytes(client.blockChain.currentHash) 
-                client.sendResult({"result": msg})
+            if serverHash ==  hashS:
+                client.blockChain = Block(0, '0', data["payload"], hashS)
+                payload = {"ack" : "yes"}
+
+                key, salt = client.sessionKeys.deriveShared()
+                payload["salt"] = ourCrypto.sendBytes(salt)
+
+                client.blockChain.generateNextBlock(payload, key)
+
+                payload["hash"] = ourCrypto.sendBytes(client.blockChain.currentHash) 
+                client.sendResult({"result": payload})
                 return
             else:
                 log(logging.ERROR, "Badly hash " +
                     json.dumps(data))
-                client.sendResult({"error": "wrong hash msg"})
+                client.sendResult({"error": "wrong hash payload"})
                 return
 

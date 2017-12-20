@@ -112,8 +112,6 @@ class Server:
             self.delClient(s)
         else:
             if len(data) > 0:
-                print("ISTO E A DATA")
-                print(data)
                 reqs = client.parseReqs(data)
                 for req in reqs:
                     self.server_actions.handleRequest(s, req, self.clients[s])

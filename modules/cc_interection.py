@@ -7,6 +7,8 @@ import shutil
 import datetime
 import socket
 import base64
+import json
+from ourCrypto import sendBytes, recvBytes 
 
 import asn1crypto.x509
 
@@ -152,9 +154,9 @@ class Certificate(object):
         except Exception as e:
             raise e
 
-    def dump_certificate(self, cert):
+    def dump_certificate(self):
         try:
-            return crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+            return crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, self.certificate)
         except Exception as e:
             raise e
 
@@ -383,7 +385,9 @@ class Cert_Sign(object):
     # Assina tem de ser alterada e dividida em duas TODO
     def sign(self, data):
         return crypto.sign(self.priv_key, data, "sha256")
-
+    
+    def generate(self, payload):
+        return {"result" : { "payload" : payload, "cert" : sendBytes(self.cert.dump_certificate()), "signed" :sendBytes(self.sign(json.dumps(payload, sort_keys = True)))}}
         
         
         
