@@ -7,7 +7,6 @@ class Block:
     def __init__(self, index, previousHash, data, currentHash):
         self.index = index
         self.previousHash = previousHash
-        self.data = data
         self.currentHash = currentHash
 
 
@@ -18,23 +17,21 @@ class Block:
         nextHash = h.finalize()
         return nextHash
 
-    def isNextBlock(self,blockData, key):
+    def isNextBlock(self,data, key):
         nextIndex = self.index + 1
-        return self.calculateHash(nextIndex, self.currentHash, blockData, key)
+        return self.calculateHash(nextIndex, self.currentHash, data, key)
         
-    def generateNextBlock(self,blockData, key):
+    def generateNextBlock(self,data, key):
         nextIndex = self.index + 1
-        nextHash = self.calculateHash(nextIndex, self.currentHash, blockData, key)
+        nextHash = self.calculateHash(nextIndex, self.currentHash, data, key)
 
         self.index = nextIndex
         self.previousHash = self.currentHash
-        self.data = blockData
         self.currentHash = nextHash
 
-    def createNext(self,blockData, hashS):
+    def createNext(self, hashS):
         self.index = self.index + 1
         self.previousHash = self.currentHash
-        self.data = blockData
         self.currentHash = hashS 
 
     def isSameBlock(self, block2):

@@ -43,7 +43,8 @@ def sessionConnect(client):
     key, salt = client.sessionKeys.deriveShared()
     payload["salt"] = ourCrypto.sendBytes(salt)
 
-    hashS = ourCrypto.verifyHash(0, '0', json.dumps(payload, sort_keys = True), key)
+    hashS = ourCrypto.generate_hash(0, '0', json.dumps(payload, sort_keys = True), key)
+    
     client.blockChain = Block(0, '0',payload, hashS) 
     payload["hash"] = ourCrypto.sendBytes(hashS)
     signature = client.cc.sign(json.dumps(payload, sort_keys = True))
@@ -65,7 +66,7 @@ def sessionConnect(client):
     key, salt = client.sessionKeys.deriveShared(salt)
     print("result")
     if hashS == client.blockChain.isNextBlock(json.dumps(response["result"], sort_keys = True),key):
-        client.blockChain.createNext(json.dumps(response["result"], sort_keys = True), hashS)
+        client.blockChain.createNext(hashS)
         print("sessão estabelecida e blockChain gerada")
     else:
         print("puta")

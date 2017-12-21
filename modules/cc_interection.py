@@ -78,6 +78,7 @@ class Certificate(object):
         
 
 
+
     # Ver se significado inválido
     def validate_signature(self, data, signature):
         if test_internet_on() and not Certificate.crls_updated:
@@ -171,7 +172,7 @@ class Certificate(object):
             return
 
         print("Internet connection detected. Updating CRL's...")
-
+        crl_list = []
         path = os.path.join(self.dir, "certs")
         for file in os.listdir(path):
             if file.endswith(".pem"):
@@ -182,10 +183,8 @@ class Certificate(object):
 
                 base_crl = extentions["extentions"].get("base_crl", None)
                 delta_crl = extentions["extentions"].get("delta_crl", None)
-
-                self.get_crl(base_crl)
-                self.get_crl(delta_crl)
-
+                crl_list.append(base_crl)
+                crl_list.append(delta_crl)
 
         path = os.path.join(self.dir, "certs", file)
         extentions = self.get_cert_extentions(self.certificate)
@@ -193,26 +192,36 @@ class Certificate(object):
         base_crl = extentions["extentions"].get("base_crl", None)
         delta_crl = extentions["extentions"].get("delta_crl", None)
 
-        self.get_crl(base_crl)
-        self.get_crl(delta_crl)
+        crl_list.append(base_crl)
+        crl_list.append(delta_crl)
+
+        for value in list(filter(lambda a: a != None, list(set(crl_list)))):
+            self.get_crl(value)
+
+
+        print("CRL's Updated")
 
         Certificate.crls_updated = True
 
 
     # Faz download de uma Revocation List Especifica 
     def get_crl(self,crl_link):
+        print(crl_link)
         if crl_link == None:
             return
 
         local_filename = str(crl_link.split('/')[-1])
+        print(local_filename)
 
         r = requests.get(crl_link, stream=True)
-        path = os.path.join(self.dir, "crls", local_filename)
-        with open(path, 'wb') as f:
-            shutil.copyfileobj(r.raw, f)
-
-        return local_filename
-
+        if r.status_code == 200:
+            path = os.path.join(self.dir, "crls", local_filename)
+            with open(path, 'wb') as f:
+                shutil.copyfileobj(r.raw, f)
+            return local_filename
+        else:
+            print("status_code is: {0}".format(r.status_code))
+            return
 
     # devolve as extensões na forma de um dicionário {"extentions": {chave: valor}}
     def get_cert_extentions(self, cert):
@@ -246,13 +255,12 @@ class Certificate(object):
 
 
     def crl_files_to_objects(self, files):
-
         path = os.path.join(self.dir, "crls")
         obj_list = []
         for file in files:
             with open(os.path.join(path, file), 'rb') as f:
 
-                obj_list.append(OpenSSL.crypto.load_crl(crypto.FILETYPE_ASN1, f.read()))
+                obj_list.append(crypto.load_crl(crypto.FILETYPE_ASN1, f.read()))
         return obj_list
 
 
@@ -363,6 +371,9 @@ class Certificate(object):
     def get_cert_subject(self, cert):
         return dict(cert.get_subject().get_components())
 
+    def get_subject(self):
+        return dict(self.certificate.get_subject().get_components())[b'CN']
+
 
     def get_ocsp_link(self, certificate):
         try:
@@ -387,7 +398,14 @@ class Cert_Sign(object):
         return crypto.sign(self.priv_key, data, "sha256")
     
     def generate(self, payload):
-        return {"result" : { "payload" : payload, "cert" : sendBytes(self.cert.dump_certificate()), "signed" :sendBytes(self.sign(json.dumps(payload, sort_keys = True)))}}
+        return {
+                "result" :
+                    {
+                    "payload" : payload,
+                    "cert" : sendBytes(self.cert.dump_certificate()),
+                    "signed" :sendBytes(self.sign(json.dumps(payload, sort_keys = True)))
+                    }
+                }
         
         
         
@@ -467,6 +485,7 @@ if __name__ == '__main__':
 
     cc = CC_Interaction()
     cert = cc.get_my_cert()
+    print(cc.cert.get_subject())
 
     cert = Certificate(cc.get_my_cert())
 

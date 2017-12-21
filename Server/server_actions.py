@@ -16,6 +16,15 @@ from DiffieHellman import DiffieHellman
 from BlockChain import Block 
 from cc_interection import Certificate
 import ourCrypto
+from ourCrypto import sendBytes
+from ourCrypto import recvBytes
+from ourCrypto import unload_payload
+from ourCrypto import load_payload
+
+
+
+
+from pprint import pprint
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
@@ -58,8 +67,20 @@ class ServerActions:
                 return
 
             if 'type' not in req:
-                log(logging.ERROR, "Message has no TYPE field")
-                return
+                ok,client.blockChain = ourCrypto.verify_integrity(req, client.sessionKeys, client.blockChain)
+
+                if ok is not True:
+                    payload = {"error": "No integrity in package or package malformed", "last_hash": sendBytes(client.blockChain.currentHash)}
+                    payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
+                    client.sendResult( payload )
+                    return
+
+
+                req = req["payload"]
+
+                if 'type' not in req:
+                    log(logging.ERROR, "Message has no TYPE field")
+                    return
 
             if req['type'] in self.messageTypes:
                 self.messageTypes[req['type']](req, client)
@@ -74,48 +95,72 @@ class ServerActions:
     def processCreate(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
 
+        signature = recvBytes(data["signature"])
+
+        del data["signature"]
+        del data["type"]
+
+
+        print(json.dumps(data, sort_keys =True))
+
+        try:
+            client.clientCertificate = Certificate(recvBytes(data["cert"]))
+            valido = client.clientCertificate.validate_signature(json.dumps(data, sort_keys =True), signature)
+            print(valido)
+        except Exception as e:
+            raise e
+
+
+        data["signature"] = sendBytes(signature)
+
+        data_error = ""
         if 'uuid' not in data.keys():
             print("no data.keys")
             log(logging.ERROR, "No \"uuid\" field in \"create\" message: " +
                 json.dumps(data))
-            client.sendResult({"error": "wrong message format"})
-            return
+            data_error = {"error": "wrong message format"}
 
         uuid = data['uuid']
         if not isinstance(uuid, int): # is it an error ?
             log(logging.ERROR, "No valid \"uuid\" field in \"create\" message: " +
                 json.dumps(data))
-            client.sendResult({"error": "wrong message format"})
-            return
+            data_error = {"error": "wrong message format"}
+            
         #esta a usar a userExists para verificar o uuid e o id
         if self.registry.userExistsUuid(uuid):
             log(logging.ERROR, "User already exists: " + json.dumps(data))
-            client.sendResult({"error": "uuid already exists"})
+            data_error = {"error": "uuid already exists"}
+
+        if data_error:
+            data_error = load_payload(data_error)
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
             return
 
-        me, responseID = self.registry.addUser(data)
-        client.sendResult({"result": me.id, "randomId" : responseID})
+
+        me = self.registry.addUser(data)
+
+        payload = {"result": me.id}
+        payload = load_payload(payload)
+        payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
+        client.sendResult( payload )
 
     def processList(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
-
+        data = unload_payload(data)
         user = 0  # 0 means all users
         userStr = "all users"
         if 'id' in data.keys():
             user = int(data['id'])
             userStr = "user%d" % user
 
-        if 'randomId' not in data.keys():
-            log(logging.ERROR, "No random id" + json.dumps(data))
-            client.sendResult({"error": "No random id"})
-
-
         log(logging.DEBUG, "List %s" % userStr)
 
-        responseID = data['randomId']
         userList = self.registry.listUsers(user)
 
-        client.sendResult({"result": userList, "randomId" : responseID})
+        payload = load_payload({"result": userList})
+        payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
+        client.sendResult(payload)
 
     def processNew(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
@@ -286,7 +331,7 @@ class ServerActions:
             key, salt = client.sessionKeys.deriveShared(salt)
             hashS = ourCrypto.recvBytes(data["payload"]["hash"])
             del data["payload"]["hash"]
-            serverHash = ourCrypto.verifyHash(0,'0', json.dumps(data["payload"], sort_keys = True),key)
+            serverHash = ourCrypto.generate_hash(0,'0', json.dumps(data["payload"], sort_keys = True),key)
 
             if serverHash ==  hashS:
                 client.blockChain = Block(0, '0', data["payload"], hashS)

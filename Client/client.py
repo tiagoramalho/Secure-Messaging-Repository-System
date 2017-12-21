@@ -23,6 +23,13 @@ from DiffieHellman import DiffieHellman
 from BlockChain import Block 
 from asymmetric import derivateKey
 import ourCrypto
+from ourCrypto import sendBytes
+from ourCrypto import recvBytes
+from ourCrypto import load_payload
+from ourCrypto import unload_payload
+
+from pprint import pprint
+
 import sessionConnect
 
 
@@ -71,8 +78,7 @@ class Client(object):
 
         #if not self.id:
         #    log_info("Creating message box...")
-        #    self.Create()
-
+        #    self.Create
         
 
 
@@ -117,28 +123,39 @@ class Client(object):
     #estou a verificar o randomId mas nao é a melhor maneira
     #o que se pode fazer e quando se gera um novo random ID ele vir ja assinado
     def Create(self):
-        msgID = randomMsgId() 
+        #msgID = randomMsgId() 
         #falta a parte de assinal este msgID
-        self.listMsgID.append(msgID)
-        message = { 'type' : 'create',
-                    'uuid' : self.uuid,
-                    'publicKey' : self.AsyCypher.getPub().decode(ENCODING),
-                    'cert' : self.cc.getCertPem().decode(ENCODING),
-                    'randomId': msgID
+        #self.listMsgID.append(msgID)
+        payload = { 'uuid' : self.uuid,
+                    'publicKey' : self.AsyCypher.getPub(),
+                    'cert' : self.cc.cert.dump_certificate(),
+                    'subject_name' : self.cc.cert.get_subject(),
+                    #'randomId': msgID
                   }
-        print(message)
-        self.send_to_server(message)
-        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
-        #verificar o msgID se esta na lista de enviados? e verificar assinatura
-        print(response)
-        
-        if response.get('randomId') not in self.listMsgID:
-            print(msgID)
-            print(response.get('randomId'))
-            log_error("This randomId is not mine")
 
+        payload = load_payload(payload)
+        print(json.dumps(payload, sort_keys = True))
+        signature = self.cc.sign(json.dumps(payload, sort_keys = True))
+
+        payload["signature"] = sendBytes(signature)
+        payload["type"] = "create"
+            
+        payload, self.blockChain = ourCrypto.generate_integrity(payload, self.sessionKeys, self.blockChain)
+        self.send_to_server(payload)
+
+        response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
+
+        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        if not ok:
+            print("No integrity of message. Exiting...")
+            sys.exit(-1)
+        #verificar o msgID se esta na lista de enviados? e verificar assinatura
+        print("response")
+        response = response["payload"]
+        response = unload_payload(response)
+        
         if response.get('error'):
-            log_error("This uuid already has a message box")
+            log_error(response.get('error').decode(ENCODING))
 
         else:
             self.id = response.get('result')
@@ -146,24 +163,41 @@ class Client(object):
 
 
     def List(self, uid = None):
-        msgID = randomMsgId() 
         #falta a parte de assinal este msgID
-        self.listMsgID.append(msgID) 
-        if uid == None:
-            message = {'type' : 'list', 'randomId' : msgID}
-        else:
-            message = {'type' : 'list', 'id' : uid, 'randomId' : msgID}
 
-        self.send_to_server(message)
+        payload = {}
+
+        if uid == None:
+            payload = {'type' : 'list'}
+        else:
+            payload = {'type' : 'list', 'id' : uid}
+
+
+        payload = load_payload(payload)
+        print(json.dumps(payload, sort_keys = True))
+        signature = self.cc.sign(json.dumps(payload, sort_keys = True))
+
+        payload, self.blockChain = ourCrypto.generate_integrity(payload, self.sessionKeys, self.blockChain)
+        self.send_to_server(payload)
+
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
 
+        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        pprint(response)
+        response = response["payload"]
+
         if response.get('error'):
-            log_error(response.get('error'))
+            log_error(response.get('error').decode(ENCODING))
         else:
+
+            response = response["result"]
+            response = unload_payload(response)
+
             try:
-                for x in response.get('result'):
+                for x in response:
                     print(x)
             except Exception as e:
+                raise e
                 log_info("Id does not exist")
 
 

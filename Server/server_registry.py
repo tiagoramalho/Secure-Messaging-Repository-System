@@ -111,10 +111,13 @@ class ServerRegistry:
 
         if 'type' in description.keys():
             del description['type']
+        """
         if 'randomId' in description.keys():
             responseId = description['randomId']
             del description['randomId']
 
+
+        """
         log(logging.DEBUG, "add user \"%s\": %s" % (uid, description))
 
         user = UserDescription(uid, description)
@@ -136,7 +139,7 @@ class ServerRegistry:
             logging.exception("Cannot create description file " + path)
             sys.exit(1)
 
-        return user, responseId
+        return user #, responseId
 
     def listUsers(self, uid):
         if uid == 0:
