@@ -295,7 +295,8 @@ class ServerActions:
                 key, salt = client.sessionKeys.deriveShared()
                 payload["salt"] = ourCrypto.sendBytes(salt)
 
-                client.blockChain.generateNextBlock(payload, key)
+                print(client.blockChain.isNextBlock(json.dumps(payload,sort_keys = True), key))
+                client.blockChain.generateNextBlock(json.dumps(payload,sort_keys = True), key)
 
                 payload["hash"] = ourCrypto.sendBytes(client.blockChain.currentHash) 
                 client.sendResult({"result": payload})

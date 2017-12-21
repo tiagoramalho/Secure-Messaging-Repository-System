@@ -31,6 +31,12 @@ class Block:
         self.data = blockData
         self.currentHash = nextHash
 
+    def createNext(self,blockData, hashS):
+        self.index = self.index + 1
+        self.previousHash = self.currentHash
+        self.data = blockData
+        self.currentHash = hashS 
+
     def isSameBlock(self, block2):
         if self.index != block2.index:
             return False

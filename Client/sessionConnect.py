@@ -63,9 +63,10 @@ def sessionConnect(client):
     del response["result"]["hash"]
     salt = ourCrypto.recvBytes(response["result"]["salt"])
     key, salt = client.sessionKeys.deriveShared(salt)
-    print(client.blockChain.isNextBlock(response["result"],key))
-    if hashS == client.blockChain.isNextBlock(response["result"],key):
-        self.blockChain.generateNextBlock(resposta["result"], key)
+    print("result")
+    if hashS == client.blockChain.isNextBlock(json.dumps(response["result"], sort_keys = True),key):
+        client.blockChain.createNext(json.dumps(response["result"], sort_keys = True), hashS)
+        print("sessão estabelecida e blockChain gerada")
     else:
         print("puta")
     return True
