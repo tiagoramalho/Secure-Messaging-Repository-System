@@ -143,6 +143,7 @@ class ServerActions:
         me = self.registry.addUser(data)
 
         client.id = me.id
+        client.uuid = uuid
 
         payload = {"result": me.id}
         payload = load_payload(payload)

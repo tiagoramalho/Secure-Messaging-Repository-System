@@ -248,12 +248,12 @@ class Client(object):
             received = ""
             for x in response.get('result')[0]:
                 received += str(x) + "; " 
-            log_success("Received Message: %s" % str(received if received != "" else "no messages"))
+            log_success("Received Message: %s" % str(received if received != "" else "No received messages"))
             sended = ""
 
             for x in response.get('result')[0]:
                 sended += str(x) + "; " 
-            log_success("Sended Message: %s" % str(sended if sended != "" else "no messages"))
+            log_success("Sended Message: %s" % str(sended if sended != "" else "No sended messages"))
 
     def Send(self, dst, msg, src = None):
         src = self.id if src == None else src
