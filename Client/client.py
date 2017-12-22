@@ -183,6 +183,10 @@ class Client(object):
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
 
         ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        if not ok:
+            print("No integrity of message. Exiting...")
+            sys.exit(-1)
+        #verificar o msgID se esta na lista de enviados? e verificar assinatura
         pprint(response)
         response = response["payload"]
 
@@ -221,13 +225,35 @@ class Client(object):
 
 
     def All(self, uid):
-        message = {'type' : 'all', 'id' : uid}
-        self.send_to_server(message)
+        payload = {'type' : 'all', 'id' : uid}
+        payload = load_payload(payload)
+
+        payload, self.blockChain = ourCrypto.generate_integrity(payload, self.sessionKeys, self.blockChain)
+        self.send_to_server(payload)
+
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
+
+        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        if not ok:
+            print("No integrity of message. Exiting...")
+            sys.exit(-1)
+        #verificar o msgID se esta na lista de enviados? e verificar assinatura
+        response = response["payload"]
+        response = unload_payload(response)
+        
         if response.get('error'):
-            log_error(response.get('error'))
+            log_error(response.get('error').decode(ENCODING))
+
         else:
-            print(response)
+            received = ""
+            for x in response.get('result')[0]:
+                received += str(x) + "; " 
+            log_success("Received Message: %s" % str(received if received != "" else "no messages"))
+            sended = ""
+
+            for x in response.get('result')[0]:
+                sended += str(x) + "; " 
+            log_success("Sended Message: %s" % str(sended if sended != "" else "no messages"))
 
     def Send(self, dst, msg, src = None):
         src = self.id if src == None else src

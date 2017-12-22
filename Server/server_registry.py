@@ -89,7 +89,7 @@ class ServerRegistry:
     def userExistsUuid(self, uid):
         for x in self.users.items():
             if uid == x[1]["description"]["uuid"]:
-                return x[1]
+                return x[0], x[1]
         return None
 
     def getUser(self, uid):

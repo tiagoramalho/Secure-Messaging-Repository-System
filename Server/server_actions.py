@@ -128,6 +128,8 @@ class ServerActions:
             
         #esta a usar a userExists para verificar o uuid e o id
         if self.registry.userExistsUuid(uuid):
+            #do lado do servidor agora os clientes tem uuid e id associados
+            client.id, client.uuid = self.registry.userExistsUuid(uuid)
             log(logging.ERROR, "User already exists: " + json.dumps(data))
             data_error = {"error": "uuid already exists"}
 
@@ -139,6 +141,8 @@ class ServerActions:
 
 
         me = self.registry.addUser(data)
+
+        client.id = me.id
 
         payload = {"result": me.id}
         payload = load_payload(payload)
@@ -180,6 +184,7 @@ class ServerActions:
 
     def processAll(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
+        data_error = ""
 
         user = -1
         if 'id' in data.keys():
@@ -188,10 +193,23 @@ class ServerActions:
         if user < 0:
             log(logging.ERROR,
                 "No valid \"id\" field in \"new\" message: " + json.dumps(data))
-            client.sendResult({"error": "wrong message format"})
+            data_error = {"error": "wrong message format"}
             return
-
-        client.sendResult({"result": [self.registry.userAllMessages(user), self.registry.userSentMessages(user)]})
+        
+        if client.id != data["id"]:
+            log(logging.ERROR,
+                "No valid \"id\" field in \"all\" message, (not your mail box): " + json.dumps(data))
+            data_error = {"error": "Not your mail box"}
+            return
+        if data_error:
+            data_error = load_payload(data_error)
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
+            return
+        
+        payload = {"result": [self.registry.userAllMessages(user), self.registry.userSentMessages(user)]}
+        payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
+        client.sendResult(payload)
 
     def processSend(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))

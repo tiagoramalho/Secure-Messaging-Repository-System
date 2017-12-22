@@ -23,6 +23,7 @@ class Client:
         self.bufout = ""
         self.addr = addr
         self.id = None
+        self.uuid = None
         self.sa_data = None
         self.sessionKeys = DiffieHellman()
         self.blockChain = None
