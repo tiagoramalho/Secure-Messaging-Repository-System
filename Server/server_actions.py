@@ -169,6 +169,7 @@ class ServerActions:
 
     def processNew(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
+        data_error = ""
 
         user = -1
         if 'id' in data.keys():
@@ -177,11 +178,22 @@ class ServerActions:
         if user < 0:
             log(logging.ERROR,
                 "No valid \"id\" field in \"new\" message: " + json.dumps(data))
-            client.sendResult({"error": "wrong message format"})
-            return
+            data_error = {"error": "wrong message format"}
 
-        client.sendResult(
-            {"result": self.registry.userNewMessages(user)})
+        if client.id != data["id"]:
+            log(logging.ERROR,
+                "No valid \"id\" field in \"all\" message, (not your mail box): " + json.dumps(data))
+            data_error = {"error": "Not your mail box"}
+
+        if data_error:
+            data_error = load_payload(data_error)
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
+            return
+        
+        payload = {"result": self.registry.userNewMessages(user)}
+        payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
+        client.sendResult(payload)
 
     def processAll(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
@@ -195,13 +207,13 @@ class ServerActions:
             log(logging.ERROR,
                 "No valid \"id\" field in \"new\" message: " + json.dumps(data))
             data_error = {"error": "wrong message format"}
-            return
+            # removi return's aqui e no if abaixo para garantir que não retorna. Só deve retornar no if data_error
         
         if client.id != data["id"]:
             log(logging.ERROR,
                 "No valid \"id\" field in \"all\" message, (not your mail box): " + json.dumps(data))
             data_error = {"error": "Not your mail box"}
-            return
+
         if data_error:
             data_error = load_payload(data_error)
             payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
@@ -214,11 +226,15 @@ class ServerActions:
 
     def processSend(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
+        data_error = ""
 
-        if not set(data.keys()).issuperset(set({'src', 'dst', 'msg', 'msg'})):
+        if not set(data.keys()).issuperset(set({'src', 'dst', 'msg', 'copy'})):
             log(logging.ERROR,
                 "Badly formated \"send\" message: " + json.dumps(data))
-            client.sendResult({"error": "wrong message format"})
+            data_error = load_payload({"error": "wrong message format"})
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
+            return
 
         srcId = int(data['src'])
         dstId = int(data['dst'])
@@ -228,20 +244,23 @@ class ServerActions:
         if not self.registry.userExists(srcId):
             log(logging.ERROR,
                 "Unknown source id for \"send\" message: " + json.dumps(data))
-            client.sendResult({"error": "wrong parameters"})
-            return
+            data_error = {"error": "wrong parameters"}
 
         if not self.registry.userExists(dstId):
             log(logging.ERROR,
                 "Unknown destination id for \"send\" message: " + json.dumps(data))
-            client.sendResult({"error": "wrong parameters"})
+            data_error = {"error": "wrong parameters"}
+
+        if data_error:
+            data_error = load_payload(data_error)
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
             return
 
         # Save message and copy
-
-        response = self.registry.sendMessage(srcId, dstId, msg, copy)
-
-        client.sendResult({"result": response})
+        payload = {"result": self.registry.sendMessage(srcId, dstId, msg, copy)}
+        payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
+        client.sendResult(payload)
 
     def processRecv(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))

@@ -21,6 +21,7 @@ from pkcs11.util.rsa import encode_rsa_public_key
 from pkcs11 import Attribute, ObjectClass
 from pkcs11.exceptions import TokenNotPresent
 from pkcs11.exceptions import NoSuchToken
+from pkcs11.exceptions import PinIncorrect
 from pkcs11.util.x509 import decode_x509_certificate
 
 import pkcs11
@@ -72,7 +73,7 @@ class Certificate(object):
                 raise e
 
         self.dir = os.path.dirname(os.path.realpath(__file__))
-        self.get_all_crls()
+        #self.get_all_crls()
 
 
         
@@ -420,11 +421,16 @@ class CC_Interaction(object):
             self.token = self.lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
             self.user_pin = getpass.getpass("PIN ?")
             self.cert = Certificate(self.get_my_cert())
+            with self.token.open(user_pin = str(self.user_pin)) as session:
+                pass
+
 
         except (TokenNotPresent, NoSuchToken, IndexError):
-            print("Please insert the Citizen Card\n Exiting...")
-            raise e
-            #sys.exit(-1)
+            print("Please insert the Citizen Card!\nExiting...")
+            sys.exit(-1)
+        except (PinIncorrect):
+            print("Incorrect Pin!\nExiting...")
+            sys.exit(-1)
         except Exception as e:
             raise e
 
@@ -481,8 +487,6 @@ class CC_Interaction(object):
 
 
 if __name__ == '__main__':
-
-
     cc = CC_Interaction()
     cert = cc.get_my_cert()
     print(cc.cert.get_subject())

@@ -24,7 +24,6 @@ def recvPubKey(key):
     return pubKey
 
 def sendBytes(hashS):
-    print(hashS)
     if isinstance(hashS, int):
         return hashS
 
@@ -44,8 +43,6 @@ def sendBytes(hashS):
     return base64.b64encode(hashS).decode(ENCODING)
 
 def recvBytes(hashS):
-    print(type(hashS))
-
     if isinstance(hashS, int):
         return hashS
 
@@ -61,6 +58,28 @@ def recvBytes(hashS):
         return dic
 
     return base64.b64decode(hashS.encode(ENCODING))
+
+
+def get_bytes(hashS):
+    if isinstance(hashS, bytes):
+        try:
+            return base64.b64decode(hashS).decode(ENCODING)
+        except Exception as e:
+            return hashS
+
+    elif isinstance(hashS, dict):
+        dic = {}
+        for key, value in hashS.items():
+            dic[key] = get_bytes(value)
+        return dic
+    elif isinstance(hashS, list):
+        ls = []
+        for value in hashS:
+            ls.append(get_bytes(value))
+        return ls
+    return hashS
+
+
 
 def generate_hash(index, previousHash, data, key):
     h = hmac.HMAC(key, hashes.SHA256(), backend=default_backend())
@@ -109,9 +128,6 @@ def verify_integrity(data, dh_object, block_chain):
 def load_payload(payload):
     for key, value in payload.items():
         if key != "type":
-            print(key)
-            print(value)
-
             payload[key] = sendBytes(value)
     return payload
 

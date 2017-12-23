@@ -9,7 +9,7 @@ import sys
 
 class Sym_Cyphers(object):
     """docstring for Sym_Cyphers"""
-    def __init__(self, block_size = 16, key_size=256, mode="CBC", key = None, iv = None):
+    def __init__(self, block_size = 16, key_size=256, mode="CTR", key = None, iv = None):
 
         #self.in_file_name = str(uuid) + "_symetric.pem" 
 
@@ -25,6 +25,8 @@ class Sym_Cyphers(object):
             self.mode = modes.CBC(self.iv)
         elif mode == "ECB":
             self.mode = modes.ECB()
+        elif mode == "CTR":
+            self.mode = modes.CTR(self.iv)
         else:
             raise
             print("ERROR invalid cypher MODE")
@@ -60,7 +62,7 @@ class Sym_Cyphers(object):
 
 
 
-        return unpad 
+        return unpad
 
 
     def cyph_file(self):
@@ -147,6 +149,9 @@ if __name__ == "__main__":
     dec = x.decyph_text(enc)
     print(dec)
     print(dec.decode('utf-8'))
+
+
+
 
 
 

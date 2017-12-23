@@ -27,6 +27,7 @@ from ourCrypto import sendBytes
 from ourCrypto import recvBytes
 from ourCrypto import load_payload
 from ourCrypto import unload_payload
+from ourCrypto import get_bytes
 
 from pprint import pprint
 
@@ -123,9 +124,6 @@ class Client(object):
     #estou a verificar o randomId mas nao é a melhor maneira
     #o que se pode fazer e quando se gera um novo random ID ele vir ja assinado
     def Create(self):
-        #msgID = randomMsgId() 
-        #falta a parte de assinal este msgID
-        #self.listMsgID.append(msgID)
         payload = { 'uuid' : self.uuid,
                     'publicKey' : self.AsyCypher.getPub(),
                     'cert' : self.cc.cert.dump_certificate(),
@@ -134,7 +132,7 @@ class Client(object):
                   }
 
         payload = load_payload(payload)
-        print(json.dumps(payload, sort_keys = True))
+
         signature = self.cc.sign(json.dumps(payload, sort_keys = True))
 
         payload["signature"] = sendBytes(signature)
@@ -150,19 +148,19 @@ class Client(object):
             print("No integrity of message. Exiting...")
             sys.exit(-1)
         #verificar o msgID se esta na lista de enviados? e verificar assinatura
-        print("response")
         response = response["payload"]
         response = unload_payload(response)
-        
         if response.get('error'):
+            self.id = response.get('result')
             log_error(response.get('error').decode(ENCODING))
 
         else:
+            pprint(response)
             self.id = response.get('result')
             log_success("Message box with created successfully (ID: %s)" % str(response.get('result')))
 
 
-    def List(self, uid = None):
+    def List(self, uid = None, get_response = False):
         #falta a parte de assinal este msgID
 
         payload = {}
@@ -174,44 +172,57 @@ class Client(object):
 
 
         payload = load_payload(payload)
-        print(json.dumps(payload, sort_keys = True))
-        signature = self.cc.sign(json.dumps(payload, sort_keys = True))
 
         payload, self.blockChain = ourCrypto.generate_integrity(payload, self.sessionKeys, self.blockChain)
         self.send_to_server(payload)
 
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
-
         ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
         if not ok:
             print("No integrity of message. Exiting...")
             sys.exit(-1)
         #verificar o msgID se esta na lista de enviados? e verificar assinatura
-        pprint(response)
+
         response = response["payload"]
+
 
         if response.get('error'):
             log_error(response.get('error').decode(ENCODING))
+            return
         else:
-
             response = response["result"]
             response = unload_payload(response)
-
+            if get_response:
+                return response
             try:
+                print("-----------\n USER LIST \n-----------")
                 for x in response:
-                    print(x)
+                    print("\nID: {0}\nName: {1}\nUUID: {2}\n-----------".format(
+                        x.get("id"),
+                        get_bytes(x.get("description").get("subject_name")),
+                        x.get("description").get("uuid")
+                        )
+                    )
             except Exception as e:
                 raise e
                 log_info("Id does not exist")
 
 
-    def New(self, user_id):
-        message = { 'type' : 'new', 
-                    'id' : user_id
-                  }
-        
-        self.send_to_server(message)
+    def New(self, uid):
+        payload = { 'type' : 'new', 'id' : uid }
+        payload = load_payload(payload)
+
+        payload, self.blockChain = ourCrypto.generate_integrity(payload, self.sessionKeys, self.blockChain)
+        self.send_to_server(payload)
+
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
+        print(response)
+        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        if not ok:
+            print("No integrity of message. Exiting...")
+            sys.exit(-1)
+        response = response["payload"]
+        response = unload_payload(response)
 
         if response.get('error'):
             log_error(response.get('error'))
@@ -222,7 +233,6 @@ class Client(object):
         else:
             for x in response.get('result'):
                 print(x)
-
 
     def All(self, uid):
         payload = {'type' : 'all', 'id' : uid}
@@ -255,21 +265,43 @@ class Client(object):
                 sended += str(x) + "; " 
             log_success("Sended Message: %s" % str(sended if sended != "" else "No sended messages"))
 
-    def Send(self, dst, msg, src = None):
-        src = self.id if src == None else src
-        print("encode")
-        print(bytes(msg,'utf-8'))
-        txtEnc = self.AsyCypher.cyph(bytes(msg, 'utf-8'))
-        message = { 'type'	: 'send', 
-                    'src'	: src,
+    def Send(self, dst, msg):
+
+        list_result = get_bytes(self.List(dst, get_response = True))[0]
+        # TODO validate user stored in server?
+
+        signature = self.cc.sign(json.dumps(msg, sort_keys = True))
+
+        text = self.AsyCypher.cyph(bytes(msg, 'utf-8'), public_key = list_result["publicKey"])
+        copy = self.AsyCypher.cyph(bytes(msg, 'utf-8'))
+
+        payload = { 'type'	: 'send', 
+                    'src'	: 1,
                     'dst'	: dst,
-                    'msg'	: txtEnc.decode(ENCODING),
-                    'copy'	: txtEnc.decode(ENCODING),
+                    'msg'	: text + b"\n" + signature,
+                    'copy'	: copy + b"\n" + signature,
                   }
 
-        self.send_to_server(message)
+        payload = load_payload(payload)
+        payload, self.blockChain = ourCrypto.generate_integrity(payload, self.sessionKeys, self.blockChain)
+        pprint(payload)
+
+        self.send_to_server(payload)
+
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
-        print(response)
+
+        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        if not ok:
+            print("No integrity of message. Exiting...")
+            sys.exit(-1)
+        #verificar o msgID se esta na lista de enviados? e verificar assinatura
+        response = response["payload"]
+        response = unload_payload(response)
+        
+        if response.get('error'):
+            log_error(response.get('error').decode(ENCODING))
+        else:
+            pprint(response)
 
 
     def Recv(self, receiver, box):

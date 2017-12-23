@@ -79,7 +79,7 @@ class Asy_Cyphers(object):
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
-        return base64.b64encode(public_key)
+        return public_key
 
     def save_keys(self):
         private_file = open(self.private_file, "wb+")
@@ -103,7 +103,7 @@ class Asy_Cyphers(object):
         private_file.close()
         pub_file.close()
 
-    def cyph(self, txt):
+    def cyph(self, txt, public_key=None):
         # Kpub  -> pertence a todos
         # kpriv -> pertence ao dono
         # T     -> texto
@@ -114,7 +114,8 @@ class Asy_Cyphers(object):
 
         sym_cypher = Sym_Cyphers(block_size = 16,
                                 key_size = 256,
-                                mode="CBC")
+                                mode="CTR")
+
         cypheredText = sym_cypher.cyph_text(txt)
         print("texto cifrado assimetrico")
         print(cypheredText)
@@ -125,16 +126,25 @@ class Asy_Cyphers(object):
 
         ks = {"padding": padd, "iv": iv, "key": key}
 
+        if public_key:
+            public_key = serialization.load_pem_public_key(
+                bytes(public_key, "utf-8"),
+                backend=default_backend()
+            )
+        else: 
+            public_key = self.public_key
 
-        ciphered_key = self.public_key.encrypt(dumps(ks),
-                                              padding.OAEP( mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                                                            algorithm=hashes.SHA256(),
-                                                            label=None
-                                                          )
-                                            )
+        ciphered_key = public_key.encrypt(dumps(ks),
+                                          padding.OAEP( mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                                        algorithm=hashes.SHA256(),
+                                                        label=None
+                                                      )
+                                          )
+
         hibrid_data = (base64.b64encode(cypheredText) + bytes("\n", "utf-8") + base64.b64encode(ciphered_key))
 
-        return hibrid_data 
+        return hibrid_data
+
     def decyph(self, data):
         intermidiate_data = data.split(bytes("\n", "utf-8"))
         intermidiate_data = intermidiate_data
@@ -158,9 +168,10 @@ class Asy_Cyphers(object):
         ivUsed = ks.get("iv")
         keyUsed = ks.get("key")
 
+
         sym_cypher = Sym_Cyphers(block_size = 16,
                                 key_size = 256,
-                                mode="CBC", 
+                                mode="CTR", 
                                 key = keyUsed, 
                                 iv = ivUsed)
 
