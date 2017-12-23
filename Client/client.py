@@ -197,12 +197,22 @@ class Client(object):
             try:
                 print("-----------\n USER LIST \n-----------")
                 for x in response:
-                    print("\nID: {0}\nName: {1}\nUUID: {2}\n-----------".format(
-                        x.get("id"),
-                        get_bytes(x.get("description").get("subject_name")),
-                        x.get("description").get("uuid")
+                    if x.get("description") !=None:
+                        print("\nID: {0}\nName: {1}\nUUID: {2}\n-----------".format(
+                            x.get("id"),
+                            get_bytes(x.get("description").get("subject_name")),
+                            x.get("description").get("uuid")
+
+                            )
                         )
-                    )
+                    else:
+                        print("\nID: {0}\nName: {1}\nUUID: {2}\n-----------".format(
+                            x.get("id"),
+                            get_bytes(x.get("subject_name")),
+                            x.get("uuid")
+
+                            )
+                        )
             except Exception as e:
                 raise e
                 log_info("Id does not exist")
@@ -225,7 +235,7 @@ class Client(object):
         response = unload_payload(response)
 
         if response.get('error'):
-            log_error(response.get('error'))
+            log_error(response.get('error').decode(ENCODING))
 
         elif len(response.get('result')) == 0:
             log_info("No new messages to show")
@@ -278,8 +288,8 @@ class Client(object):
         payload = { 'type'	: 'send', 
                     'src'	: 1,
                     'dst'	: dst,
-                    'msg'	: text + b"\n" + signature,
-                    'copy'	: copy + b"\n" + signature,
+                    'msg'	: {"text" : text, "signature" : signature},
+                    'copy'	: {"copy" : copy,  "signature" : signature},
                   }
 
         payload = load_payload(payload)

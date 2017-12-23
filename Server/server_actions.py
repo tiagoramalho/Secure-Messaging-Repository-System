@@ -162,6 +162,14 @@ class ServerActions:
         log(logging.DEBUG, "List %s" % userStr)
 
         userList = self.registry.listUsers(user)
+        if userList == None:
+            log(logging.ERROR, "User does not exist: " + json.dumps(data))
+            data_error = {"error": "user does not exist"}
+            data_error = load_payload(data_error)
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
+            return
+
 
         payload = load_payload({"result": userList})
         payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
@@ -192,6 +200,7 @@ class ServerActions:
             return
         
         payload = {"result": self.registry.userNewMessages(user)}
+        payload = load_payload(payload)
         payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
         client.sendResult(payload)
 
@@ -221,6 +230,8 @@ class ServerActions:
             return
         
         payload = {"result": [self.registry.userAllMessages(user), self.registry.userSentMessages(user)]}
+        payload = load_payload(payload)
+
         payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
         client.sendResult(payload)
 
@@ -259,6 +270,7 @@ class ServerActions:
 
         # Save message and copy
         payload = {"result": self.registry.sendMessage(srcId, dstId, msg, copy)}
+        payload = load_payload(payload)
         payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
         client.sendResult(payload)
 
