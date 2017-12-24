@@ -284,7 +284,7 @@ class Client(object):
     def Send(self, dst, msg):
 
         if self.id == None:
-            log_error("No user id, pls create a user")
+            log_error("No user id, pls create/login a user")
             return
         list_result = (self.List(dst, get_response = True)[0])
 
@@ -337,9 +337,12 @@ class Client(object):
             pprint(response)
 
 
-    def Recv(self, receiver, box):
+    def Recv(self, box):
+        if self.id == None:
+            log_error("No user id, pls create/login a user")
+            return
         payload= { 'type'	: 'recv', 
-                    'id'	: receiver,  
+                    'id'	: self.id,  
                     'msg'	: str(box),
                   }
 
@@ -485,10 +488,6 @@ if __name__ == "__main__":
 
 
         elif x == 6:
-            receiver = get_int(question = "Receiver User ID? ")
-            if receiver == None:
-                log_error("Invalid Value")
-
             sender = get_int(question = "Sender User ID? ")
             if sender == None:
                 log_error("Invalid Value")
@@ -497,7 +496,7 @@ if __name__ == "__main__":
             if boxId == None:
                 log_error("Invalid Value")
             box = str("_".join([str(sender), str(boxId)]))
-            client.Recv(receiver, box)
+            client.Recv(box)
 
 
         elif x == 7:
