@@ -17,6 +17,7 @@ from cryptography.hazmat.primitives import serialization
 
 sys.path.append(path.join(path.dirname(path.realpath(__file__)),'../modules/'))
 from cc_interection import CC_Interaction
+from cc_interection import Certificate
 from asymmetric import Asy_Cyphers 
 from symmetric import Sym_Cyphers 
 from DiffieHellman import DiffieHellman
@@ -151,8 +152,11 @@ class Client(object):
         response = response["payload"]
         response = unload_payload(response)
         if response.get('error'):
-            self.id = response.get('result')
             log_error(response.get('error').decode(ENCODING))
+
+        elif response.get('login'):
+            self.id = response.get('result')
+            log_info(response.get('login').decode(ENCODING))
 
         else:
             pprint(response)
@@ -207,7 +211,7 @@ class Client(object):
                         )
                     else:
                         print("\nID: {0}\nName: {1}\nUUID: {2}\n-----------".format(
-                            x.get("id"),
+                            uid,
                             get_bytes(x.get("subject_name")),
                             x.get("uuid")
 
@@ -277,8 +281,25 @@ class Client(object):
 
     def Send(self, dst, msg):
 
+        if self.id == None:
+            log_error("No user id, pls create a user")
+            return
+        list_result = (self.List(dst, get_response = True)[0])
+
+        signature = recvBytes(list_result["signature"].decode(ENCODING))
+        del list_result["signature"]
+
+        try:
+            self.certCertificate = Certificate(recvBytes(list_result["cert"].decode(ENCODING)))
+            list_result["cert"] = list_result["cert"].decode(ENCODING)
+            list_result["publicKey"] = list_result["publicKey"].decode(ENCODING)
+            list_result["subject_name"] = list_result["subject_name"].decode(ENCODING)
+            valido = self.certCertificate.validate_signature(json.dumps(list_result, sort_keys =True), signature)
+            print(valido)
+        except Exception as e:
+            raise e
+
         list_result = get_bytes(self.List(dst, get_response = True))[0]
-        # TODO validate user stored in server?
 
         signature = self.cc.sign(json.dumps(msg, sort_keys = True))
 
@@ -286,7 +307,7 @@ class Client(object):
         copy = self.AsyCypher.cyph(bytes(msg, 'utf-8'))
 
         payload = { 'type'	: 'send', 
-                    'src'	: 1,
+                    'src'	: self.id,
                     'dst'	: dst,
                     'msg'	: {"text" : text, "signature" : signature},
                     'copy'	: {"copy" : copy,  "signature" : signature},
@@ -329,10 +350,9 @@ class Client(object):
         if not ok:
             print("No integrity of message. Exiting...")
             sys.exit(-1)
-        #verificar o msgID se esta na lista de enviados? e verificar assinatura
+
         response = response["payload"]
         response = unload_payload(response)
-        print(response)
         
         if response.get('error'):
             log_error(response.get('error').decode(ENCODING))

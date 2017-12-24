@@ -95,12 +95,15 @@ class ServerActions:
     def processCreate(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
 
+
         signature = recvBytes(data["signature"])
+
 
         del data["signature"]
         del data["type"]
 
         try:
+
             client.clientCertificate = Certificate(recvBytes(data["cert"]))
             valido = client.clientCertificate.validate_signature(json.dumps(data, sort_keys =True), signature)
             print(valido)
@@ -128,7 +131,7 @@ class ServerActions:
             #do lado do servidor agora os clientes tem uuid e id associados
             client.id, client.uuid = self.registry.userExistsUuid(uuid)
             log(logging.ERROR, "User already exists: " + json.dumps(data))
-            data_error = {"error": "uuid already exists"}
+            data_error = {"login": "Just signed in", "result": client.id}
 
         if data_error:
             data_error = load_payload(data_error)
@@ -136,6 +139,7 @@ class ServerActions:
             client.sendResult( payload )
             return
 
+        print(data)
 
         me = self.registry.addUser(data)
 
@@ -258,6 +262,11 @@ class ServerActions:
             log(logging.ERROR,
                 "Unknown destination id for \"send\" message: " + json.dumps(data))
             data_error = {"error": "wrong parameters"}
+
+        if client.id != srcId or srcId == None:
+            log(logging.ERROR,
+                "No valid \"src id\" field in \"send\" message, (not your mail box): " + json.dumps(data))
+            data_error = {"error": "Cant send msg from other person, user your source ID"}
 
         if data_error:
             data_error = load_payload(data_error)
