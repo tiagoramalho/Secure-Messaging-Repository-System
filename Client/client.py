@@ -191,7 +191,9 @@ class Client(object):
 
 
         if response.get('error'):
-            log_error(response.get('error').decode(ENCODING))
+            response = get_bytes(unload_payload(response))
+            print(response)
+            log_error(response.get('error'))    
             return
         else:
             response = response["result"]
@@ -301,7 +303,7 @@ class Client(object):
 
         list_result = get_bytes(self.List(dst, get_response = True))[0]
 
-        signature = self.cc.sign(json.dumps(msg, sort_keys = True))
+        signature = self.cc.sign(msg, sort_keys = True)
 
         text = self.AsyCypher.cyph(bytes(msg, 'utf-8'), public_key = list_result["publicKey"])
         copy = self.AsyCypher.cyph(bytes(msg, 'utf-8'))
@@ -362,22 +364,43 @@ class Client(object):
             plaintext = self.AsyCypher.decyph(intermidiate_data[0])
             print(plaintext.decode(ENCODING))
 
+        self.Receipt(box, plaintext.decode(ENCODING))
+
                 
 
-    def Receipt(self, box):
-        message = { 'type'		: 'receipt', 
+    def Receipt(self, box, msg):
+        if self.id == None:
+            log_error("No user id, pls create a user")
+            return
+
+        print("Sending receipt for message nmber {0} ".format(box))
+
+        signature = self.cc.sign(msg)
+
+        payload = { 'type'		: 'receipt', 
                     'id'		: self.id,  
-                    'msg'		: box,
-                    'receipt'	: "Vamos imaginar que este texto e uma assinatura"  # hint: Não é ;) 
+                    'msg'		: str(box),
+                    'receipt'	: signature  # hint: Não é ;) 
                   }
 
-        self.send_to_server(message)
-        self.socket.settimeout(0.5)
+        payload = load_payload(payload)
+        payload, self.blockChain = ourCrypto.generate_integrity(payload, self.sessionKeys, self.blockChain)
+        self.send_to_server(payload)
+
+
+        self.socket.settimeout(1)
+
         try:
             response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
+            ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+            if not ok:
+                print("No integrity of message. Exiting...")
+                sys.exit(-1)
             log_error(response.get('error'))
-        except:
+
+        except Exception as e:
             log_success("Sent")
+
         self.socket.settimeout(None)
 
 
@@ -419,7 +442,7 @@ if __name__ == "__main__":
                 
     except Exception as e:
         raise e
-
+    client.Create()
     while 1:
         menu()
         x = None

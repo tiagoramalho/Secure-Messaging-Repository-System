@@ -326,11 +326,23 @@ class ServerActions:
 
     def processReceipt(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
+        data_error = {}
+
+        if client.id != fromId:
+            log(logging.ERROR,
+                "No valid \"id\" field in \"recv\" message, (not your mail box): " + json.dumps(data))
+            data_error = {"error": "Not your mail box"}
 
         if not set({'id', 'msg', 'receipt'}).issubset(set(data.keys())):
             log(logging.ERROR, "Badly formated \"receipt\" message: " +
                 json.dumps(data))
-            client.sendResult({"error": "wrong request format"})
+            data_error = {"error": "wrong request format"}
+
+        if data_error:
+            data_error = load_payload(data_error)
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
+            return
 
         fromId = int(data["id"])
         msg = str(data['msg'])
@@ -338,7 +350,12 @@ class ServerActions:
 
         if not self.registry.messageWasRed(str(fromId), msg):
             log(logging.ERROR, "Unknown, or not yet red, message for \"receipt\" request " + json.dumps(data))
-            client.sendResult({"error": "wrong parameters"})
+            data_error = {"error": "wrong parameters"}
+
+        if data_error:
+            data_error = load_payload(data_error)
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
             return
 
         self.registry.storeReceipt(fromId, msg, receipt)

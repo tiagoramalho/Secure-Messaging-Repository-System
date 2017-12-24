@@ -65,7 +65,7 @@ def get_bytes(hashS):
         try:
             return base64.b64decode(hashS).decode(ENCODING)
         except Exception as e:
-            return hashS
+            return hashS.decode("utf-8") 
 
     elif isinstance(hashS, dict):
         dic = {}
