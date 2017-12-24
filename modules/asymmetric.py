@@ -117,8 +117,6 @@ class Asy_Cyphers(object):
                                 mode="CTR")
 
         cypheredText = sym_cypher.cyph_text(txt)
-        print("texto cifrado assimetrico")
-        print(cypheredText)
         key = sym_cypher.key
         iv = sym_cypher.iv
         padd = os.urandom(32) # padding
@@ -146,12 +144,10 @@ class Asy_Cyphers(object):
         return hibrid_data
 
     def decyph(self, data):
-        intermidiate_data = data.split(bytes("\n", "utf-8"))
-        intermidiate_data = intermidiate_data
+
+        intermidiate_data = base64.b64decode(data).split(bytes("\n", "utf-8"))
 
         ciphered_text = base64.b64decode(intermidiate_data[0])
-        print("decypher text")
-        print(ciphered_text)
         ciphered_key = base64.b64decode(intermidiate_data[1])
 
         # ks a baixo  = ks + dados

@@ -194,7 +194,10 @@ class ServerRegistry:
             #path = os.path.join(basename, str(i))
             #print (basename + str(i))
             if not os.path.exists(basename + str(i)):
-                return str(i)
+                allP = (basename + str(i)).split("/")
+                all_p = allP[0] +"/"+ allP[1] + "/_" + allP[2]
+                if not os.path.exists(all_p):
+                    return str(i)
 
             i += 1
 
@@ -205,6 +208,7 @@ class ServerRegistry:
 
         try:
             path = os.path.join(self.userMessageBox(dst), src + "_")
+            print(path)
             nr = self.newFile(path)
             self.saveOnFile(path + nr, msg)
 

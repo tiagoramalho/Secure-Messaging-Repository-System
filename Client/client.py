@@ -242,7 +242,7 @@ class Client(object):
 
         else:
             for x in response.get('result'):
-                print(x)
+                print(x.decode(ENCODING))
 
     def All(self, uid):
         payload = {'type' : 'all', 'id' : uid}
@@ -267,12 +267,12 @@ class Client(object):
         else:
             received = ""
             for x in response.get('result')[0]:
-                received += str(x) + "; " 
+                received += x.decode(ENCODING) + "; " 
             log_success("Received Message: %s" % str(received if received != "" else "No received messages"))
             sended = ""
 
             for x in response.get('result')[0]:
-                sended += str(x) + "; " 
+                sended += x.decode(ENCODING) + "; " 
             log_success("Sended Message: %s" % str(sended if sended != "" else "No sended messages"))
 
     def Send(self, dst, msg):
@@ -315,20 +315,33 @@ class Client(object):
 
 
     def Recv(self, receiver, box):
-        message = { 'type'	: 'recv', 
+        payload= { 'type'	: 'recv', 
                     'id'	: receiver,  
-                    'msg'	: box,
+                    'msg'	: str(box),
                   }
 
-        self.send_to_server(message)
+        payload = load_payload(payload)
+        payload, self.blockChain = ourCrypto.generate_integrity(payload, self.sessionKeys, self.blockChain)
+
+        self.send_to_server(payload)
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
+        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        if not ok:
+            print("No integrity of message. Exiting...")
+            sys.exit(-1)
+        #verificar o msgID se esta na lista de enviados? e verificar assinatura
+        response = response["payload"]
+        response = unload_payload(response)
+        print(response)
+        
         if response.get('error'):
-            log_error(response.get('error'))
+            log_error(response.get('error').decode(ENCODING))
         else:
-            txtEnc = response.get('result')[1].encode(ENCODING)
-            txtDenc = self.AsyCypher.decyph(txtEnc)
-            print(txtDenc)
-            print(txtDenc.decode('utf-8'))
+            intermidiate_data = response["payload"][1].split(bytes("\n", "utf-8"))
+
+            plaintext = self.AsyCypher.decyph(intermidiate_data[0])
+            print(plaintext.decode(ENCODING))
+
                 
 
     def Receipt(self, box):
@@ -440,8 +453,7 @@ if __name__ == "__main__":
             boxId = get_int(question = "Message ID? ")
             if boxId == None:
                 log_error("Invalid Value")
-
-            box = str(sender) + "_" + str(boxId)
+            box = str("_".join([str(sender), str(boxId)]))
             client.Recv(receiver, box)
 
 

@@ -36,13 +36,10 @@ class Sym_Cyphers(object):
         self.decryptor = self.cipher.decryptor()
 
     def cyph_text(self, text):
-        print("TEXT")
-        print(text)
         msg = b""
 
         dataPadded = self.padder.update(text)
         dataPadded += self.padder.finalize()
-        print(dataPadded)
 
         msg =  self.encryptor.update(dataPadded) + self.encryptor.finalize()
 
@@ -51,11 +48,8 @@ class Sym_Cyphers(object):
 
     def decyph_text(self, text):
         
-        print("decyph text")
         msg = b""
-        print(text)
         msg = self.decryptor.update(text) + self.decryptor.finalize()
-        print(msg)
 
         data = self.unpadder.update(msg)
         unpad = data + self.unpadder.finalize()

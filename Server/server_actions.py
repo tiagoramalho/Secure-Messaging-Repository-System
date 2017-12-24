@@ -100,9 +100,6 @@ class ServerActions:
         del data["signature"]
         del data["type"]
 
-
-        print(json.dumps(data, sort_keys =True))
-
         try:
             client.clientCertificate = Certificate(recvBytes(data["cert"]))
             valido = client.clientCertificate.validate_signature(json.dumps(data, sort_keys =True), signature)
@@ -249,8 +246,8 @@ class ServerActions:
 
         srcId = int(data['src'])
         dstId = int(data['dst'])
-        msg = str(data['msg'])
-        copy = str(data['copy'])
+        msg = str("\n".join([data['msg']['text'], data['msg']['signature']]))
+        copy = str("\n".join([data['copy']['copy'], data['copy']['signature']]))
 
         if not self.registry.userExists(srcId):
             log(logging.ERROR,
@@ -277,31 +274,46 @@ class ServerActions:
     def processRecv(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
 
+        data_error = ""
         if not set({'id', 'msg'}).issubset(set(data.keys())):
             log(logging.ERROR, "Badly formated \"recv\" message: " +
                 json.dumps(data))
-            client.sendResult({"error": "wrong message format"})
+            data_error = {"error": "wrong parameters"}
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
+            return
 
         fromId = int(data['id'])
-        msg = str(data['msg'])
-
+        msg = recvBytes(data['msg']).decode('utf-8')
         if not self.registry.userExists(fromId):
             log(logging.ERROR,
                 "Unknown source id for \"recv\" message: " + json.dumps(data))
-            client.sendResult({"error": "wrong parameters"})
-            return
+            data_error = {"error": "wrong parameters"}
+
+        if client.id != fromId:
+            log(logging.ERROR,
+                "No valid \"id\" field in \"recv\" message, (not your mail box): " + json.dumps(data))
+            data_error = {"error": "Not your mail box"}
 
         if not self.registry.messageExists(fromId, msg):
             log(logging.ERROR,
-                "Unknown source msg for \"recv\" message: " + json.dumps(data))
-            client.sendResult({"error": "wrong parameters"})
+                "Unknown mail box for \"recv\" message: " + json.dumps(data))
+            data_error = {"error": "wrong parameters"}
+
+        if data_error:
+            data_error = load_payload(data_error)
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
             return
 
         # Read message
 
         response = self.registry.recvMessage(fromId, msg)
 
-        client.sendResult({"result": response})
+        payload = {"payload": response}
+        payload = load_payload(payload)
+        payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
+        client.sendResult(payload)
 
     def processReceipt(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
@@ -390,7 +402,6 @@ class ServerActions:
                 key, salt = client.sessionKeys.deriveShared()
                 payload["salt"] = ourCrypto.sendBytes(salt)
 
-                print(client.blockChain.isNextBlock(json.dumps(payload,sort_keys = True), key))
                 client.blockChain.generateNextBlock(json.dumps(payload,sort_keys = True), key)
 
                 payload["hash"] = ourCrypto.sendBytes(client.blockChain.currentHash) 
