@@ -328,6 +328,8 @@ class ServerActions:
         log(logging.DEBUG, "%s" % json.dumps(data))
         data_error = {}
 
+        fromId = int(data['id'])
+
         if client.id != fromId:
             log(logging.ERROR,
                 "No valid \"id\" field in \"recv\" message, (not your mail box): " + json.dumps(data))

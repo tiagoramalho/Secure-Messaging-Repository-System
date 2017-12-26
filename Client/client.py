@@ -9,6 +9,7 @@ from os import path
 import sys
 import base64
 
+
 from random import randint
 #---------------------------------------------- 
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
@@ -74,6 +75,7 @@ class Client(object):
         self.sessionKeys = DiffieHellman()
 
         #assimetrica gerada por nos (nao do cc)
+
         self.AsyCypher = Asy_Cyphers(self.uuid)
         self.blockChain = None
         self.certCertificate = None
@@ -81,9 +83,6 @@ class Client(object):
         #if not self.id:
         #    log_info("Creating message box...")
         #    self.Create
-        
-
-
 
 
     def get_self_ID(self):
@@ -303,7 +302,7 @@ class Client(object):
 
         list_result = get_bytes(self.List(dst, get_response = True))[0]
 
-        signature = self.cc.sign(msg, sort_keys = True)
+        signature = self.cc.sign(msg)
 
         text = self.AsyCypher.cyph(bytes(msg, 'utf-8'), public_key = list_result["publicKey"])
         copy = self.AsyCypher.cyph(bytes(msg, 'utf-8'))

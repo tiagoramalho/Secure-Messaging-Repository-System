@@ -419,7 +419,7 @@ class CC_Interaction(object):
             print("Reading CC...")
             self.lib = pkcs11.lib("/usr/lib/opensc-pkcs11.so")
             self.token = self.lib.get_token(token_label="Auth PIN (CARTAO DE CIDADAO)")
-            self.user_pin = getpass.getpass("PIN ?")
+            self.user_pin = getpass.getpass("CC Authentication PIN? ")
             self.cert = Certificate(self.get_my_cert())
             with self.token.open(user_pin = str(self.user_pin)) as session:
                 pass

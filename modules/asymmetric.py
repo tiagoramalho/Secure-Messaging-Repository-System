@@ -10,9 +10,12 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.asymmetric import padding
 
+from getpass import getpass
+
 from pkcs11.util.rsa import encode_rsa_public_key
 import os
 import sys
+from OpenSSL import crypto
 
 def derivateKey(key, salt):
     salt = os.urandom(16)
@@ -44,32 +47,41 @@ def loads(ks):
 
 class Asy_Cyphers(object):
     """docstring for Asy_Cyphers"""
-    def __init__(self, uuid):
+    def __init__(self, uuid): # 
         super(Asy_Cyphers, self).__init__()
         self.pub_file = str(uuid) + "_pub.pem"
         self.private_file =  str(uuid) + "_priv.pem"
         try: 
+
+
+
             with open(self.pub_file, "rb") as key_file:
                 self.public_key = serialization.load_pem_public_key(
                     key_file.read(),
                     backend=default_backend()
                 )  
             with open(self.private_file, "rb") as key_file:
-                self.private_key = serialization.load_pem_private_key(
-                    key_file.read(),
-                    password=None,
-                    backend=default_backend()
-                )
+                pw = getpass("Insert PassPhrase for Ciphering key pair: ")
+                self.private_key = crypto.load_privatekey(crypto.FILETYPE_PEM, key_file.read(), passphrase=bytes(pw, "utf-8")) if pw != None else crypto.load_privatekey(crypto.FILETYPE_PEM, key_file.read()) 
+                self.private_key.to_cryptography_key()
 
-        except Exception as e:
-            print("exception")
-            self.private_key = rsa.generate_private_key(
-                    public_exponent=65537,
-                    key_size=4096,
-                    backend=default_backend()
-            )
+        except OSError as e:
+            pw = getpass("Creating key pair for Ciphering. Please insert a passphrase: ")
+            print("Generating key pair for cyphering")
+            
+            pw = pw if pw != None else None 
+            keys = crypto.PKey()
+            keys.generate_key(crypto.TYPE_RSA, 4096)
+            self.save_keys(keys, pw)
+
+            self.private_key = keys.to_cryptography_key()
             self.public_key = self.private_key.public_key()
-            self.save_keys()
+
+        except crypto.Error as e:
+            print("Invalid passphrase for this key_pair")
+            sys.exit(-1)
+
+
 
 
 
@@ -81,24 +93,17 @@ class Asy_Cyphers(object):
         )
         return public_key
 
-    def save_keys(self):
+    def save_keys(self, keys, passphrase):
         private_file = open(self.private_file, "wb+")
         pub_file = open(self.pub_file, "wb+")
+        if passphrase:
+            private_file.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, keys, cipher="aes256", passphrase=bytes(passphrase, "utf-8")))
 
-        private_key = self.private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.TraditionalOpenSSL,
-                encryption_algorithm=serialization.NoEncryption()
-        )
-
-        public_key = self.public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
+        else:
+            private_file.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, keys))
 
 
-        private_file.write(private_key)
-        pub_file.write(public_key)
+        pub_file.write(crypto.dump_publickey(crypto.FILETYPE_PEM, keys))
 
         private_file.close()
         pub_file.close()
