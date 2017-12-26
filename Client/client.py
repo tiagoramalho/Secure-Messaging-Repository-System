@@ -303,7 +303,7 @@ class Client(object):
 
         list_result = get_bytes(self.List(dst, get_response = True))[0]
 
-        signature = self.cc.sign(msg, sort_keys = True)
+        signature = self.cc.sign(msg)
 
         text = self.AsyCypher.cyph(bytes(msg, 'utf-8'), public_key = list_result["publicKey"])
         copy = self.AsyCypher.cyph(bytes(msg, 'utf-8'))
@@ -367,7 +367,7 @@ class Client(object):
             plaintext = self.AsyCypher.decyph(intermidiate_data[0])
             print(plaintext.decode(ENCODING))
 
-        self.Receipt(box, plaintext.decode(ENCODING))
+            self.Receipt(box, plaintext.decode(ENCODING))
 
                 
 
@@ -379,6 +379,8 @@ class Client(object):
         print("Sending receipt for message nmber {0} ".format(box))
 
         signature = self.cc.sign(msg)
+        print(msg)
+        print(signature)
 
         payload = { 'type'		: 'receipt', 
                     'id'		: self.id,  
@@ -391,35 +393,86 @@ class Client(object):
         self.send_to_server(payload)
 
 
-        self.socket.settimeout(1)
+        self.socket.settimeout(5)
 
         try:
             response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
             ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+
+            print(response)
             if not ok:
                 print("No integrity of message. Exiting...")
                 sys.exit(-1)
+            response = response["payload"]
+            response = get_bytes(unload_payload(response))
             log_error(response.get('error'))
 
         except Exception as e:
+            print(e)
             log_success("Sent")
 
         self.socket.settimeout(None)
 
 
     def Status(self, sender, box):
+        if self.id == None:
+            log_error("No user id, pls create a user")
+            return
         message = { 'type'	: 'status', 
-                    'id'	: sender,  
+                    'id'	: self.id,  
                     'msg'	: box,
                   }
 
         self.send_to_server(message)
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
+        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        if not ok:
+            print("No integrity of message. Exiting...")
+            sys.exit(-1)
+
+        response = response["payload"]
+        response = unload_payload(response)
+         
+        valido = False
         if response.get('error'):
-            log_error(response.get('error'))
+            log_error(response.get('error').decode(ENCODING))
         else:
-            print(response)
-        pass
+
+            response = response["payload"]
+            msg = response["msg"]
+            receipt = response["receipts"]
+
+            list_result = (self.List(receipt[0]["id"], get_response = True)[0])
+
+            signature = recvBytes(list_result["signature"].decode(ENCODING))
+            del list_result["signature"]
+
+            try:
+                self.certCertificate = Certificate(recvBytes(list_result["cert"].decode(ENCODING)))
+                list_result["cert"] = list_result["cert"].decode(ENCODING)
+                list_result["publicKey"] = list_result["publicKey"].decode(ENCODING)
+                list_result["subject_name"] = list_result["subject_name"].decode(ENCODING)
+                valido = self.certCertificate.validate_signature(json.dumps(list_result, sort_keys =True), signature)
+                print(valido)
+            except Exception as e:
+                raise e
+            if valido:
+                intermidiate_data = msg.split(bytes("\n", "utf-8"))
+
+                plaintext = self.AsyCypher.decyph(intermidiate_data[0])
+                print(plaintext)
+                try:
+                    signature = recvBytes(receipt[0]["receipt"].decode(ENCODING))
+                    print(signature)
+                    plaintext = plaintext.decode(ENCODING)
+                    print(plaintext)
+                    valido = self.certCertificate.validate_signature(plaintext, signature)
+                except Exception as e:
+                    print(e)
+                    print("\n\n\n")
+
+                print(msg)
+                print(receipt)
 
 
 

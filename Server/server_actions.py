@@ -20,6 +20,7 @@ from ourCrypto import sendBytes
 from ourCrypto import recvBytes
 from ourCrypto import unload_payload
 from ourCrypto import load_payload
+from ourCrypto import get_bytes 
 
 
 
@@ -328,6 +329,7 @@ class ServerActions:
         log(logging.DEBUG, "%s" % json.dumps(data))
         data_error = {}
 
+        fromId = int(data['id'])
         if client.id != fromId:
             log(logging.ERROR,
                 "No valid \"id\" field in \"recv\" message, (not your mail box): " + json.dumps(data))
@@ -345,7 +347,7 @@ class ServerActions:
             return
 
         fromId = int(data["id"])
-        msg = str(data['msg'])
+        msg = get_bytes(base64.b64decode(data['msg']))
         receipt = str(data['receipt'])
 
         if not self.registry.messageWasRed(str(fromId), msg):
@@ -362,22 +364,40 @@ class ServerActions:
 
     def processStatus(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
+        data_error = {}
+
+        fromId = int(data['id'])
+        if client.id != fromId:
+            log(logging.ERROR,
+                "No valid \"id\" field in \"recv\" message, (not your mail box): " + json.dumps(data))
 
         if not set({'id', 'msg'}).issubset(set(data.keys())):
-            log(logging.ERROR, "Badly formated \"status\" message: " +
+            log(logging.ERROR, "Badly formated \"receipt\" message: " +
                 json.dumps(data))
-            client.sendResult({"error": "wrong message format"})
+            data_error = {"error": "wrong request format"}
 
         fromId = int(data['id'])
         msg = str(data["msg"])
 
         if(not self.registry.copyExists(fromId, msg)):
             log(logging.ERROR, "Unknown message for \"status\" request: " + json.dumps(data))
-            client.sendResult({"error", "wrong parameters"})
+            data_error = {"error", "wrong parameters"}
+
+        if data_error:
+            data_error = load_payload(data_error)
+            payload, client.blockChain = ourCrypto.generate_integrity(data_error, client.sessionKeys, client.blockChain)
+            client.sendResult( payload )
             return
 
         response = self.registry.getReceipts(fromId, msg)
-        client.sendResult({"result": response})
+        print("\n\n\n\n")
+        print(response)
+
+        payload = {"payload": response}
+
+        payload = load_payload(payload)
+        payload, client.blockChain = ourCrypto.generate_integrity(payload, client.sessionKeys, client.blockChain)
+        client.sendResult(payload)
 
     def processSession(self, data, client):
         log(logging.DEBUG, "%s" % json.dumps(data))
