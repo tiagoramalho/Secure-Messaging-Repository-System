@@ -78,7 +78,13 @@ class ServerRegistry:
             return os.path.exists(os.path.join(self.userMessageBox(uid), "_" + msg))
 
     def messageExists(self, uid, message):
-        return os.path.exists(os.path.join(self.userMessageBox(uid), message))
+        if os.path.exists(os.path.join(self.userMessageBox(uid), message)):
+            return True
+        else:
+            if os.path.exists(os.path.join(self.userMessageBox(uid), message)):
+                return True
+        return False
+
 
     def copyExists(self, uid, message):
         return os.path.exists(os.path.join(self.userReceiptBox(uid), message))
@@ -247,6 +253,8 @@ class ServerRegistry:
         msg = str(msg)
 
         result = []
+        print("msg \n\n\n")
+        print(msg)
         pattern = "_?([0-9]+)_[0-9]+"
 
         matches = re.match(pattern, msg)

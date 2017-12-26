@@ -440,38 +440,40 @@ class Client(object):
             response = response["payload"]
             msg = response["msg"]
             receipt = response["receipts"]
+            
+            receiptID = ""
+            validoCert = False
+            for x in receipt:
+                if receiptID != x["id"]:
+                    list_result = (self.List(x["id"], get_response = True)[0])
 
-            list_result = (self.List(receipt[0]["id"], get_response = True)[0])
+                    signature = recvBytes(list_result["signature"].decode(ENCODING))
+                    del list_result["signature"]
+                    print("entrou no del sig \n\n\n")
 
-            signature = recvBytes(list_result["signature"].decode(ENCODING))
-            del list_result["signature"]
+                    try:
+                        self.certCertificate = Certificate(recvBytes(list_result["cert"].decode(ENCODING)))
+                        list_result["cert"] = list_result["cert"].decode(ENCODING)
+                        list_result["publicKey"] = list_result["publicKey"].decode(ENCODING)
+                        list_result["subject_name"] = list_result["subject_name"].decode(ENCODING)
+                        validoCert = self.certCertificate.validate_signature(json.dumps(list_result, sort_keys =True), signature)
+                        print(validoCert)
+                    except Exception as e:
+                        raise e
+                if validoCert:
+                    intermidiate_data = msg.split(bytes("\n", "utf-8"))
 
-            try:
-                self.certCertificate = Certificate(recvBytes(list_result["cert"].decode(ENCODING)))
-                list_result["cert"] = list_result["cert"].decode(ENCODING)
-                list_result["publicKey"] = list_result["publicKey"].decode(ENCODING)
-                list_result["subject_name"] = list_result["subject_name"].decode(ENCODING)
-                valido = self.certCertificate.validate_signature(json.dumps(list_result, sort_keys =True), signature)
-                print(valido)
-            except Exception as e:
-                raise e
-            if valido:
-                intermidiate_data = msg.split(bytes("\n", "utf-8"))
-
-                plaintext = self.AsyCypher.decyph(intermidiate_data[0])
-                print(plaintext)
-                try:
-                    signature = recvBytes(receipt[0]["receipt"].decode(ENCODING))
-                    print(signature)
-                    plaintext = plaintext.decode(ENCODING)
+                    plaintext = self.AsyCypher.decyph(intermidiate_data[0])
                     print(plaintext)
-                    valido = self.certCertificate.validate_signature(plaintext, signature)
-                except Exception as e:
-                    print(e)
-                    print("\n\n\n")
+                    try:
+                        signature = recvBytes(x["receipt"].decode(ENCODING))
+                        plaintext = plaintext.decode(ENCODING)
+                        valido = self.certCertificate.validate_signature(plaintext, signature)
+                    except Exception as e:
+                        print(e)
+                        print(x)
+                
 
-                print(msg)
-                print(receipt)
 
 
 
