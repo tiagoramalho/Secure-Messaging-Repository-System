@@ -138,11 +138,8 @@ if __name__ == "__main__":
     x = Sym_Cyphers()
     msg = "salhdlsakjhdjkashjkdhsajkhdjkashjkdhajkshdjkh ashdjksahd o branco "
     f = bytes(msg, 'utf-8')
-    print(f)
     enc = x.cyph_text(f)
     dec = x.decyph_text(enc)
-    print(dec)
-    print(dec.decode('utf-8'))
 
 
 

@@ -64,7 +64,6 @@ class Asy_Cyphers(object):
                 pw = getpass("Insert PassPhrase for Ciphering key pair: ")
                 self.private_key = crypto.load_privatekey(crypto.FILETYPE_PEM, key_file.read(), passphrase=bytes(pw, "utf-8")) if pw != None else crypto.load_privatekey(crypto.FILETYPE_PEM, key_file.read()) 
                 self.private_key = self.private_key.to_cryptography_key()
-                print (type(self.private_key))
 
         except OSError as e:
             pw = getpass("Creating key pair for Ciphering. Please insert a passphrase: ")
@@ -77,7 +76,6 @@ class Asy_Cyphers(object):
 
             self.private_key = keys.to_cryptography_key()
             self.public_key = self.private_key.public_key()
-            print(type(self.private_key))
 
         except crypto.Error as e:
             print("Invalid passphrase for this key_pair")
@@ -85,8 +83,6 @@ class Asy_Cyphers(object):
 
 
 
-        print(type(self.public_key))
-        print(type(self.private_key))
 
 
 

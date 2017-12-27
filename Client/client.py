@@ -61,14 +61,14 @@ class Client(object):
             self.socket = socket(AF_INET, SOCK_STREAM)
             self.socket.connect((self.server_ip, self.server_port))
         except Exception as e:
-            log_error("Error connecting with the server")
+            log_error("Error connecting with the server\n")
             raise
             return
         self.cc = CC_Interaction()
         try:
             self.uuid = self.cc.get_pubkey_hash_int() 
         except ValueError:
-            log_error("Error getting uuid")
+            log_error("Error getting uuid\n")
             raise
             return
         self.id = None 
@@ -79,10 +79,6 @@ class Client(object):
         self.AsyCypher = Asy_Cyphers(self.uuid)
         self.blockChain = None
         self.certCertificate = None
-
-        #if not self.id:
-        #    log_info("Creating message box...")
-        #    self.Create
 
 
     def get_self_ID(self):
@@ -101,8 +97,6 @@ class Client(object):
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
 
         if response.get('randomId') not in self.listMsgID:
-            print(msgID)
-            print(response.get('randomId'))
             log_error("This randomId is not mine")
 
         if not response.get('error'):
@@ -158,7 +152,6 @@ class Client(object):
             log_info(response.get('login').decode(ENCODING))
 
         else:
-            pprint(response)
             self.id = response.get('result')
             log_success("Message box with created successfully (ID: %s)" % str(response.get('result')))
 
@@ -231,7 +224,6 @@ class Client(object):
         self.send_to_server(payload)
 
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
-        print(response)
         ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
         if not ok:
             print("No integrity of message. Exiting...")
@@ -246,8 +238,9 @@ class Client(object):
             log_info("No new messages to show")
 
         else:
+            log_success("New messages: ")
             for x in response.get('result'):
-                print(x.decode(ENCODING))
+                print("\tmessage -" +  x.decode(ENCODING))
 
     def All(self, uid):
         payload = {'type' : 'all', 'id' : uid}
@@ -285,8 +278,11 @@ class Client(object):
         if self.id == None:
             log_error("No user id, pls create/login a user")
             return
-        list_result = (self.List(dst, get_response = True)[0])
-
+        list_result = self.List(dst, get_response = True)
+        if list_result == None:
+            log_error("No destination user ID")
+            return
+        list_result = list_result[0]
         signature = recvBytes(list_result["signature"].decode(ENCODING))
         del list_result["signature"]
 
@@ -295,11 +291,14 @@ class Client(object):
             list_result["cert"] = list_result["cert"].decode(ENCODING)
             list_result["publicKey"] = list_result["publicKey"].decode(ENCODING)
             list_result["subject_name"] = list_result["subject_name"].decode(ENCODING)
+            log_info("Validating public key of the recipient")
             valido = self.certCertificate.validate_signature(json.dumps(list_result, sort_keys =True), signature)
-            print(valido)
         except Exception as e:
-            raise e
+            print(e)
 
+        if not valido:
+            log_error("Information in the description is not reliable")
+            return
         list_result = get_bytes(self.List(dst, get_response = True))[0]
 
         signature = self.cc.sign(msg)
@@ -316,7 +315,6 @@ class Client(object):
 
         payload = load_payload(payload)
         payload, self.blockChain = ourCrypto.generate_integrity(payload, self.sessionKeys, self.blockChain)
-        pprint(payload)
 
         self.send_to_server(payload)
 
@@ -333,12 +331,12 @@ class Client(object):
         if response.get('error'):
             log_error(response.get('error').decode(ENCODING))
         else:
-            pprint(response)
+            log_success("Message identifier: %s; Receipt identifier %s" % (str(response["result"][0].decode(ENCODING)), str(response["result"][1].decode(ENCODING))))
 
 
     def Recv(self, box):
         if self.id == None:
-            log_error("No user id, pls create/login a user")
+            log_error("No user id, pls create/login a user\n")
             return
         payload= { 'type'	: 'recv', 
                     'id'	: self.id,  
@@ -364,7 +362,7 @@ class Client(object):
             intermidiate_data = response["payload"][1].split(bytes("\n", "utf-8"))
 
             plaintext = self.AsyCypher.decyph(intermidiate_data[0])
-            print(plaintext.decode(ENCODING))
+            log_success("\nMessage: %s \n" %str(plaintext.decode(ENCODING)))
 
             self.Receipt(box, plaintext.decode(ENCODING))
 
@@ -372,14 +370,12 @@ class Client(object):
 
     def Receipt(self, box, msg):
         if self.id == None:
-            log_error("No user id, pls create a user")
+            log_error("No user id, pls create a user\n")
             return
 
-        print("Sending receipt for message nmber {0} ".format(box))
+        log_info("Sending receipt for message number %s " % str(box))
 
         signature = self.cc.sign(msg)
-        print(msg)
-        print(signature)
 
         payload = { 'type'		: 'receipt', 
                     'id'		: self.id,  
@@ -398,7 +394,6 @@ class Client(object):
             response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
             ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
 
-            print(response)
             if not ok:
                 print("No integrity of message. Exiting...")
                 sys.exit(-1)
@@ -407,15 +402,14 @@ class Client(object):
             log_error(response.get('error'))
 
         except Exception as e:
-            print(e)
-            log_success("Sent")
+            log_success("Receipt was sent\n")
 
         self.socket.settimeout(None)
 
 
-    def Status(self, sender, box):
+    def Status(self, box):
         if self.id == None:
-            log_error("No user id, pls create a user")
+            log_error("No user id, pls create a user\n")
             return
         message = { 'type'	: 'status', 
                     'id'	: self.id,  
@@ -445,33 +439,42 @@ class Client(object):
             validoCert = False
             for x in receipt:
                 if receiptID != x["id"]:
+                    receiptID = x["id"]
                     list_result = (self.List(x["id"], get_response = True)[0])
 
                     signature = recvBytes(list_result["signature"].decode(ENCODING))
                     del list_result["signature"]
-                    print("entrou no del sig \n\n\n")
-
                     try:
                         self.certCertificate = Certificate(recvBytes(list_result["cert"].decode(ENCODING)))
                         list_result["cert"] = list_result["cert"].decode(ENCODING)
                         list_result["publicKey"] = list_result["publicKey"].decode(ENCODING)
                         list_result["subject_name"] = list_result["subject_name"].decode(ENCODING)
+                        log_info("Validating certificate\n")
                         validoCert = self.certCertificate.validate_signature(json.dumps(list_result, sort_keys =True), signature)
+                        print("\n\n\n valido cert")
                         print(validoCert)
                     except Exception as e:
-                        raise e
+                        print(e)
                 if validoCert:
                     intermidiate_data = msg.split(bytes("\n", "utf-8"))
 
                     plaintext = self.AsyCypher.decyph(intermidiate_data[0])
-                    print(plaintext)
                     try:
                         signature = recvBytes(x["receipt"].decode(ENCODING))
                         plaintext = plaintext.decode(ENCODING)
+                        log_info("Validating receipt\n")
                         valido = self.certCertificate.validate_signature(plaintext, signature)
                     except Exception as e:
                         print(e)
-                        print(x)
+
+                    if valido:
+                        valido = False
+                        log_success("Authenticated receipt. ID-%s Date-%s \n" % (str(x["id"]), str(x["date"])))
+                    else:
+                        log_error("Unauthenticated receipt. ID-%s Date-%s \n" % (str(x["id"]), str(x["date"])))
+                else:
+                    log_error("Information in the description is not reliable \n")
+
                 
 
 
@@ -495,11 +498,13 @@ if __name__ == "__main__":
     try:
         client = Client()
         ok = sessionConnect.sessionConnect(client)
-        #self.id = self.get_self_ID()
                 
     except Exception as e:
         raise e
-    client.Create()
+    if ok:
+        client.Create()
+    else:
+        sys.exit(-1)
     while 1:
         menu()
         x = None
@@ -518,11 +523,11 @@ if __name__ == "__main__":
 
         elif x == 3:
             result = get_int(question = "User ID? ")
-            client.New(result) if result else log_error("Invalid Value")
+            client.New(result) if result else log_error("Invalid Value\n")
 
         elif x == 4:
             result = get_int(question = "User ID? ")
-            client.All(result) if result else log_error("Invalid Value")
+            client.All(result) if result else log_error("Invalid Value\n")
 
         elif x == 5:  # Send Function
 
@@ -531,10 +536,10 @@ if __name__ == "__main__":
             msg = str(input("Message? "))
 
             if dst == None:
-                log_error("Invalid Destination ID")
+                log_error("Invalid Destination ID\n")
 
             if msg == None:
-                log_error("Invalid Message")
+                log_error("Invalid Message\n")
             if dst == None or msg == None:
                 continue
             else:
@@ -544,43 +549,50 @@ if __name__ == "__main__":
         elif x == 6:
             sender = get_int(question = "Sender User ID? ")
             if sender == None:
-                log_error("Invalid Value")
+                log_error("Invalid Value\n")
 
             boxId = get_int(question = "Message ID? ")
             if boxId == None:
-                log_error("Invalid Value")
-            box = str("_".join([str(sender), str(boxId)]))
-            client.Recv(box)
+                log_error("Invalid Value\n")
+
+            readed = get_int(question = "Type 1 if is a new message else type 0: ")
+            if readed:
+                box = str("_".join([str(sender), str(boxId)]))
+                client.Recv(box)
+            else:
+                box = str("_".join([str(sender), str(boxId)]))
+                box = "_"+box
+                client.Recv(box)
+
+            
 
 
         elif x == 7:
             sender = get_int(question = "Sender User ID? ")
             if sender == None:
-                log_error("Invalid Value")
+                log_error("Invalid Value\n")
 
             boxId = get_int(question = "Message ID? ")
             if boxId == None:
-                log_error("Invalid Value")
+                log_error("Invalid Value\n")
 
 
             box = str(sender) + "_" + str(boxId)
-            client.Receipt(box)
+
+            msg = str(input("Write the reading message? "))
+            client.Receipt(box, msg)
 
         elif x == 8:
             sender = get_int(question = "Sender User ID? ")
             if sender == None:
-                log_error("Invalid Value")
-
-            receiver = get_int(question = "Receiver User ID? ")
-            if receiver == None:
-                log_error("Invalid Value")
+                log_error("Invalid Value\n")
 
             boxId = get_int(question = "Message ID? ")
             if boxId == None:
-                log_error("Invalid Value")
+                log_error("Invalid Value\n")
 
-            box = str(receiver) + "_" + str(boxId)
-            client.Status(sender, box)
+            box = str(sender) + "_" + str(boxId)
+            client.Status(box)
 
         elif x == 0:
             break

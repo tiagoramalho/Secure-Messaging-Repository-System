@@ -78,13 +78,7 @@ class ServerRegistry:
             return os.path.exists(os.path.join(self.userMessageBox(uid), "_" + msg))
 
     def messageExists(self, uid, message):
-        if os.path.exists(os.path.join(self.userMessageBox(uid), message)):
-            return True
-        else:
-            if os.path.exists(os.path.join(self.userMessageBox(uid), message)):
-                return True
-        return False
-
+        return os.path.exists(os.path.join(self.userMessageBox(uid), message))
 
     def copyExists(self, uid, message):
         return os.path.exists(os.path.join(self.userReceiptBox(uid), message))
