@@ -30,8 +30,9 @@ class DiffieHellman(object):
             backend=default_backend()
         )
         key = hkdf.derive(self.sharedKey)
-
         return key, saltN
+
+
 if __name__ == "__main__":
     
     v = DiffieHellman()

@@ -123,7 +123,7 @@ class Client(object):
                     'subject_name' : self.cc.cert.get_subject(),
                     #'randomId': msgID
                   }
-
+        
         payload = load_payload(payload)
 
         signature = self.cc.sign(json.dumps(payload, sort_keys = True))
@@ -136,7 +136,7 @@ class Client(object):
 
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
 
-        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        ok, self.blockChain, response = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
         if not ok:
             print("No integrity of message. Exiting...")
             sys.exit(-1)
@@ -172,7 +172,7 @@ class Client(object):
         self.send_to_server(payload)
 
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
-        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        ok, self.blockChain, response = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
         if not ok:
             print("No integrity of message. Exiting...")
             sys.exit(-1)
@@ -222,7 +222,7 @@ class Client(object):
         self.send_to_server(payload)
 
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
-        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        ok, self.blockChain, response= ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
         if not ok:
             print("No integrity of message. Exiting...")
             sys.exit(-1)
@@ -249,7 +249,7 @@ class Client(object):
 
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
 
-        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        ok, self.blockChain, response = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
         if not ok:
             print("No integrity of message. Exiting...")
             sys.exit(-1)
@@ -318,7 +318,7 @@ class Client(object):
 
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
 
-        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        ok, self.blockChain, response = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
         if not ok:
             print("No integrity of message. Exiting...")
             sys.exit(-1)
@@ -346,7 +346,7 @@ class Client(object):
 
         self.send_to_server(payload)
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
-        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        ok, self.blockChain, response = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
         if not ok:
             print("No integrity of message. Exiting...")
             sys.exit(-1)
@@ -390,7 +390,7 @@ class Client(object):
 
         try:
             response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
-            ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+            ok, self.blockChain, response = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
 
             if not ok:
                 print("No integrity of message. Exiting...")
@@ -416,7 +416,7 @@ class Client(object):
 
         self.send_to_server(message)
         response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
-        ok, self.blockChain = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
+        ok, self.blockChain, response = ourCrypto.verify_integrity(response, self.sessionKeys, self.blockChain)
         if not ok:
             print("No integrity of message. Exiting...")
             sys.exit(-1)

@@ -68,7 +68,7 @@ class ServerActions:
                 return
 
             if 'type' not in req:
-                ok,client.blockChain = ourCrypto.verify_integrity(req, client.sessionKeys, client.blockChain)
+                ok,client.blockChain, req = ourCrypto.verify_integrity(req, client.sessionKeys, client.blockChain)
 
                 if ok is not True:
                     payload = {"error": "No integrity in package or package malformed", "last_hash": sendBytes(client.blockChain.currentHash)}
@@ -140,7 +140,6 @@ class ServerActions:
             client.sendResult( payload )
             return
 
-        print(data)
 
         me = self.registry.addUser(data)
 
@@ -390,8 +389,6 @@ class ServerActions:
             return
 
         response = self.registry.getReceipts(fromId, msg)
-        print("\n\n\n\n")
-        print(response)
 
         payload = {"payload": response}
 

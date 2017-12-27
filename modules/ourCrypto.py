@@ -7,6 +7,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes, hmac
 
+from symmetric import Sym_Cyphers 
+from DiffieHellman import DiffieHellman
 import json
 
 
@@ -24,9 +26,7 @@ def recvPubKey(key):
     return pubKey
 
 def sendBytes(hashS):
-    if isinstance(hashS, int):
-        return hashS
-
+    if isinstance(hashS, int): return hashS 
     if isinstance(hashS, str):
         return base64.b64encode(bytes(hashS, 'utf-8')).decode(ENCODING)
     if isinstance(hashS, list):
@@ -93,16 +93,17 @@ def randomMsgId():
 
 
 def generate_integrity(payload, dh_object, block_chain):
-    iv = os.urandom(16) # Not used yet
 
+    encriptMsg, iv, salt = cypherSession(json.dumps(payload, sort_keys = True), dh_object)
+    payload = {"payload" : encriptMsg, "iv" : iv, "salt" : salt}
     key, salt = dh_object.deriveShared()
+    payload = sendBytes(payload)
     block_chain.generateNextBlock(json.dumps(payload, sort_keys =True), key)
 
     return {
-        "payload": payload, # TODO: Cypher
+        "payload": payload,
         "salt": sendBytes(salt),
         "hash": sendBytes(block_chain.currentHash),
-        #"iv": iv
     }, block_chain
 
 
@@ -112,18 +113,21 @@ def verify_integrity(data, dh_object, block_chain):
     phash = recvBytes(data["hash"])
 
 
-    key, salt = dh_object.deriveShared(salt)
-
+    key, salt = dh_object.deriveShared(salt) 
     payload = data["payload"] 
 
     nhash = block_chain.isNextBlock(json.dumps(payload, sort_keys =True), key)
 
     if nhash == phash:
         block_chain.createNext(nhash)
-        return True, block_chain
+        payload = recvBytes(payload)
+        payload = json.loads(decypherSession(payload["payload"], dh_object, payload["salt"],payload["iv"]))
+        
+
+        return True, block_chain, {"payload": payload}
 
     else:
-        return False, block_chain
+        return False, block_chain, None
 
 def load_payload(payload):
     for key, value in payload.items():
@@ -144,7 +148,19 @@ def unload_payload(payload):
             payload[key] = recvBytes(value)
     return payload
 
+def cypherSession(msg, dh_object):
+    iv = os.urandom(16)
+    key, salt = dh_object.deriveShared()
+    sessionCyph = Sym_Cyphers(key=key, iv=iv)
+    encriptMsg = sessionCyph.cyph_text(msg.encode(ENCODING))
 
+    return encriptMsg, iv, salt
 
+def decypherSession(msg, dh_object, salt, iv):
+
+    key, salt = dh_object.deriveShared(salt) 
+    sessionCyph = Sym_Cyphers(key=key, iv=iv)
+    decriptMsg = sessionCyph.decyph_text(msg)
+    return get_bytes(decriptMsg)
 
 
