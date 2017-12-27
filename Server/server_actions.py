@@ -381,7 +381,7 @@ class ServerActions:
 
         if(not self.registry.copyExists(fromId, msg)):
             log(logging.ERROR, "Unknown message for \"status\" request: " + json.dumps(data))
-            data_error = {"error", "wrong parameters"}
+            data_error = {"error": "wrong parameters"}
 
         if data_error:
             data_error = load_payload(data_error)

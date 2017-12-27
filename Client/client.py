@@ -9,8 +9,7 @@ from os import path
 import sys
 import base64
 
-
-from random import randint
+from datetime import date
 #---------------------------------------------- 
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.backends import default_backend
@@ -184,7 +183,6 @@ class Client(object):
 
         if response.get('error'):
             response = get_bytes(unload_payload(response))
-            print(response)
             log_error(response.get('error'))    
             return
         else:
@@ -240,7 +238,7 @@ class Client(object):
         else:
             log_success("New messages: ")
             for x in response.get('result'):
-                print("\tmessage -" +  x.decode(ENCODING))
+                print("\tmessage: " +  x.decode(ENCODING))
 
     def All(self, uid):
         payload = {'type' : 'all', 'id' : uid}
@@ -269,7 +267,7 @@ class Client(object):
             log_success("Received Message: %s" % str(received if received != "" else "No received messages"))
             sended = ""
 
-            for x in response.get('result')[0]:
+            for x in response.get('result')[1]:
                 sended += x.decode(ENCODING) + "; " 
             log_success("Sended Message: %s" % str(sended if sended != "" else "No sended messages"))
 
@@ -285,7 +283,7 @@ class Client(object):
         list_result = list_result[0]
         signature = recvBytes(list_result["signature"].decode(ENCODING))
         del list_result["signature"]
-
+        valido = False
         try:
             self.certCertificate = Certificate(recvBytes(list_result["cert"].decode(ENCODING)))
             list_result["cert"] = list_result["cert"].decode(ENCODING)
@@ -294,7 +292,7 @@ class Client(object):
             log_info("Validating public key of the recipient")
             valido = self.certCertificate.validate_signature(json.dumps(list_result, sort_keys =True), signature)
         except Exception as e:
-            print(e)
+            pass
 
         if not valido:
             log_error("Information in the description is not reliable")
@@ -388,7 +386,7 @@ class Client(object):
         self.send_to_server(payload)
 
 
-        self.socket.settimeout(5)
+        self.socket.settimeout(2)
 
         try:
             response = json.loads(self.socket.recv(BUFSIZE).decode('utf-8'))
@@ -436,11 +434,12 @@ class Client(object):
             receipt = response["receipts"]
             
             receiptID = ""
+            valido = False
             validoCert = False
             for x in receipt:
                 if receiptID != x["id"]:
                     receiptID = x["id"]
-                    list_result = (self.List(x["id"], get_response = True)[0])
+                    list_result = (self.List(receiptID, get_response = True)[0])
 
                     signature = recvBytes(list_result["signature"].decode(ENCODING))
                     del list_result["signature"]
@@ -451,10 +450,8 @@ class Client(object):
                         list_result["subject_name"] = list_result["subject_name"].decode(ENCODING)
                         log_info("Validating certificate\n")
                         validoCert = self.certCertificate.validate_signature(json.dumps(list_result, sort_keys =True), signature)
-                        print("\n\n\n valido cert")
-                        print(validoCert)
                     except Exception as e:
-                        print(e)
+                        pass
                 if validoCert:
                     intermidiate_data = msg.split(bytes("\n", "utf-8"))
 
@@ -465,13 +462,13 @@ class Client(object):
                         log_info("Validating receipt\n")
                         valido = self.certCertificate.validate_signature(plaintext, signature)
                     except Exception as e:
-                        print(e)
+                        pass
 
                     if valido:
                         valido = False
-                        log_success("Authenticated receipt. ID-%s Date-%s \n" % (str(x["id"]), str(x["date"])))
+                        log_success("Authenticated receipt. ID-%s Date-%s \n" % (str(x["id"].decode(ENCODING)), str(date.fromtimestamp(int(x["date"].decode(ENCODING))/1000))))
                     else:
-                        log_error("Unauthenticated receipt. ID-%s Date-%s \n" % (str(x["id"]), str(x["date"])))
+                        log_error("Unauthenticated receipt. ID-%s Date-%s \n" % (str(x["id"].decode(ENCODING)), str(date.fromtimestamp(int(x["date"].decode(ENCODING))/1000))))
                 else:
                     log_error("Information in the description is not reliable \n")
 
@@ -555,8 +552,8 @@ if __name__ == "__main__":
             if boxId == None:
                 log_error("Invalid Value\n")
 
-            readed = get_int(question = "Type 1 if is a new message else type 0: ")
-            if readed:
+            readed = get_int(question = "Has this message been read (1->Yes; 0->No):  ")
+            if not readed:
                 box = str("_".join([str(sender), str(boxId)]))
                 client.Recv(box)
             else:
@@ -583,7 +580,7 @@ if __name__ == "__main__":
             client.Receipt(box, msg)
 
         elif x == 8:
-            sender = get_int(question = "Sender User ID? ")
+            sender = get_int(question = "Receiver User ID? ")
             if sender == None:
                 log_error("Invalid Value\n")
 

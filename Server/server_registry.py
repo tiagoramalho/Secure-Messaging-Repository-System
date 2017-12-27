@@ -208,7 +208,6 @@ class ServerRegistry:
 
         try:
             path = os.path.join(self.userMessageBox(dst), src + "_")
-            print(path)
             nr = self.newFile(path)
             self.saveOnFile(path + nr, msg)
 
@@ -233,8 +232,6 @@ class ServerRegistry:
                 f = os.path.join(path, msg)
                 path = os.path.join(path, "_" + msg)
                 log(logging.DEBUG, "Marking message " + msg + " as read")
-                print (f)
-                print (path)
                 os.rename(f, path)
             except:
                 logging.exception("Cannot rename message file to " + path)
@@ -247,8 +244,6 @@ class ServerRegistry:
         msg = str(msg)
 
         result = []
-        print("msg \n\n\n")
-        print(msg)
         pattern = "_?([0-9]+)_[0-9]+"
 
         matches = re.match(pattern, msg)
@@ -306,7 +301,6 @@ class ServerRegistry:
         result = {"msg": copy, "receipts": []}
 
         for fname in os.listdir(boxdir):
-            print (fname)
             m = pattern.match(fname)
             if m and m.group(1) == msg:
                 path = os.path.join(self.userReceiptBox(uid), fname)
