@@ -299,11 +299,11 @@ class Certificate(object):
             if found:
                 found = False
             else:
-                return False
+                raise NameError("Invalid certificate chain")
 
         if issuer == subject:
             return chain
-        return False
+        raise NameError("Invalid certificate chain")
 
     def get_crl_list_for_given_chain(self, chain):
         list_crl_chain = []

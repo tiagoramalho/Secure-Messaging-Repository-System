@@ -37,7 +37,7 @@ def sessionConnect(client):
         else:
             print("rando id errado")
     except Exception as e:
-        print(e)
+        raise e
 
 
     payload = {"status" : 2, "pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey)}
