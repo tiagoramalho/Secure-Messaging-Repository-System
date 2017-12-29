@@ -131,6 +131,10 @@ class ServerActions:
         if self.registry.userExistsUuid(uuid):
             #do lado do servidor agora os clientes tem uuid e id associados
             client.id, client.uuid = self.registry.userExistsUuid(uuid)
+            print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+            print(self.registry.listUsers(client.id))
+            print(recvBytes(data["cert"]))
+            print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
             log(logging.ERROR, "User already exists: " + json.dumps(data))
             data_error = {"login": "Just signed in", "result": client.id}
 
