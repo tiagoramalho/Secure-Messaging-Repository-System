@@ -413,12 +413,13 @@ class ServerActions:
             try:
                 client.clientCertificate = Certificate(ourCrypto.recvBytes(data["cert"]))
                 valido = client.clientCertificate.validate_signature(json.dumps(data["payload"], sort_keys =True), ourCrypto.recvBytes(data["signed"]))
-                print(valido)
-            except Exception as e:
-                print(e)
 
+            except Exception as e:
+                
+                payload = {"error" : "Client invalid certificate", "randomID" :data["payload"]["randomID"]}
+                client.sendResult(client.certServe.generate(payload))
+                return
             payload = {"pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey), "status" : 2, "randomID" :data["payload"]["randomID"]}
-            #sign = sign(payload)
             client.sendResult(client.certServe.generate(payload))
             return
 
@@ -427,9 +428,10 @@ class ServerActions:
             try:
                 client.clientCertificate = Certificate(ourCrypto.recvBytes(data["cert"]))
                 valido = client.clientCertificate.validate_signature(json.dumps(data["payload"], sort_keys =True), ourCrypto.recvBytes(data["signed"]))
-                print(valido)
             except Exception as e:
-                print(e)
+                payload = {"error" : "Invalida certificate"}
+                client.sendResult(client.certServe.generate(payload))
+                return
 
             peer_pub_key = data["payload"]["pubKey"]
 
@@ -457,6 +459,7 @@ class ServerActions:
             else:
                 log(logging.ERROR, "Badly hash " +
                     json.dumps(data))
-                client.sendResult({"error": "wrong hash payload"})
+                payload = {"error": "wrong hash payload"}
+                client.sendResult(client.certServe.generate(payload))
                 return
 

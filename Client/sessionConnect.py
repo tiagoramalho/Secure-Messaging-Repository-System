@@ -27,21 +27,34 @@ def sessionConnect(client):
 
     response = json.loads(client.socket.recv(BUFSIZE).decode('utf-8'))
     #verificar assinatura e se os randomMsgId sao iguais
+    valido = False
     try:
         client.certCertificate = Certificate(ourCrypto.recvBytes(response["result"]["cert"]))
 
         log_info("Validation of the server signature.")
-        valido = client.certCertificate.validate_signature(json.dumps(response["result"]["payload"], sort_keys =True), ourCrypto.recvBytes(response["result"]["signed"]))
+        valido = client.certCertificate.validate_signature(json.dumps(response["result"]["payload"], sort_keys =True), ourCrypto.recvBytes(response["result"]["signed"]), False)
+            
+    except Exception as e:
+        log_error("Session was not established, try again")
+        return False
+
+    
+    if valido:
+        try:
+            log_error(response["result"]["payload"]["error"])
+            return False
+        except Exception as e:
+            pass
+
         if randomID == response["result"]["payload"]["randomID"]:
             client.sessionKeys.getSecret(ourCrypto.recvPubKey(response["result"]["payload"]["pubKey"]))
         else:
-            print("rando id errado")
-    except Exception as e:
-        raise e
+            log_error("Session was not established")
+            return False
 
 
     payload = {"status" : 2, "pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey)}
-    #        client.sessionKeys.pubKey
+
     key, salt = client.sessionKeys.deriveShared()
     payload["salt"] = ourCrypto.sendBytes(salt)
 
@@ -56,10 +69,13 @@ def sessionConnect(client):
                 'cert' : ourCrypto.sendBytes(client.cc.cert.dump_certificate()),
               }
     client.send_to_server(message)
-    #Ultima resposta proveniente do servidor para troca de chaves
-    #tem de gerar a mesma hash do ack
 
     response = json.loads(client.socket.recv(BUFSIZE).decode('utf-8'))
+
+    try:
+        log_error(response["result"]["payload"]["error"])
+    except Exception as e:
+        pass
 
     hashS = ourCrypto.recvBytes(response["result"]["hash"])
     del response["result"]["hash"]

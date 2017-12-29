@@ -121,7 +121,6 @@ class Certificate(object):
             verification = crypto.verify(self.certificate, signature, data, "sha256")
             return True
         except Exception as e:
-            print("Failed encryption")
             raise e
 
 
