@@ -35,13 +35,14 @@ def sessionConnect(client):
         valido = client.certCertificate.validate_signature(json.dumps(response["result"]["payload"], sort_keys =True), ourCrypto.recvBytes(response["result"]["signed"]), False)
             
     except Exception as e:
-        print("aqui")
         log_error("Session was not established, try again")
         return False
 
+    
     if valido:
         try:
             log_error(response["result"]["payload"]["error"])
+            return False
         except Exception as e:
             pass
 
@@ -53,7 +54,7 @@ def sessionConnect(client):
 
 
     payload = {"status" : 2, "pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey)}
-    #        client.sessionKeys.pubKey
+
     key, salt = client.sessionKeys.deriveShared()
     payload["salt"] = ourCrypto.sendBytes(salt)
 

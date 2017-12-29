@@ -81,13 +81,13 @@ class Certificate(object):
 
 
     # Ver se significado inválido
-    def validate_signature(self, data, signature):
+    def validate_signature(self, data, signature, is_client_cert = True):
         if test_internet_on() and not Certificate.crls_updated:
             #self.get_all_crls()             #Updating crl's
             pass
 
         try:
-            chain = self.get_cert_chain(self.certificate)
+            chain = self.get_cert_chain(self.certificate, is_client_cert)
             ocsp_list = []
             crl_list = []
             all_crl_list = []
@@ -119,7 +119,6 @@ class Certificate(object):
             verification = crypto.verify(self.certificate, signature, data, "sha256")
             return True
         except Exception as e:
-            print("Failed encryption")
             raise e
 
 
@@ -267,16 +266,27 @@ class Certificate(object):
 
 
     # Devolve a cadeia de certificação.
-    def get_cert_chain(self, cert):
+    def get_cert_chain(self, cert, is_client_cert):
+        server_cert = "SegurancaCA.pem"
+
         issuer = self.get_cert_issuer(cert)
         subject = self.get_cert_subject(cert)
         found = False
         chain = [cert]
 
+        path = os.path.join(self.dir, "certs")
+        file_cert_list = []
+
+        if is_client_cert:
+            file_cert_list = os.listdir(path)
+            file_cert_list.remove(server_cert)
+        else:
+            file_cert_list = [server_cert]
+
         while issuer != subject:
-            path = os.path.join(self.dir, "certs")
-            for file in os.listdir(path):
+            for file in file_cert_list:
                 if file.endswith(".pem"):
+
                     path = os.path.join(self.dir, "certs", file)
                     cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(path, "r").read())
                     subject = self.get_cert_subject(cert)
@@ -288,11 +298,11 @@ class Certificate(object):
             if found:
                 found = False
             else:
-                return False
+                raise NameError("Invalid certificate chain")
 
         if issuer == subject:
             return chain
-        return False
+        raise NameError("Invalid certificate chain")
 
     def get_crl_list_for_given_chain(self, chain):
         list_crl_chain = []

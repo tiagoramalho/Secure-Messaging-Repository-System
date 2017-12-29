@@ -412,11 +412,10 @@ class ServerActions:
 
             except Exception as e:
                 
-                payload = {"error" : "Invalid certificate", "randomID" :data["payload"]["randomID"]}
+                payload = {"error" : "Client invalid certificate", "randomID" :data["payload"]["randomID"]}
                 client.sendResult(client.certServe.generate(payload))
                 return
             payload = {"pubKey" : ourCrypto.sendPubKey(client.sessionKeys.pubKey), "status" : 2, "randomID" :data["payload"]["randomID"]}
-            #sign = sign(payload)
             client.sendResult(client.certServe.generate(payload))
             return
 
