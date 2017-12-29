@@ -131,12 +131,16 @@ class ServerActions:
         if self.registry.userExistsUuid(uuid):
             #do lado do servidor agora os clientes tem uuid e id associados
             client.id, client.uuid = self.registry.userExistsUuid(uuid)
-            print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-            print(self.registry.listUsers(client.id))
-            print(recvBytes(data["cert"]))
-            print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-            log(logging.ERROR, "User already exists: " + json.dumps(data))
-            data_error = {"login": "Just signed in", "result": client.id}
+
+            # Comparing certificates just to be sure :)
+            cert_stored  = recvBytes(self.registry.listUsers(client.id)[0]['cert'])
+            cert_recived = recvBytes(data["cert"])
+
+            if cert_stored = cert_recived:
+                data_error = {"login": "Just signed in", "result": client.id}
+            else:
+                data_error = {"error": "You are not who you say you are :) Get Rekt m8"}
+
 
         if data_error:
             data_error = load_payload(data_error)
