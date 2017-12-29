@@ -136,7 +136,7 @@ class ServerActions:
             cert_stored  = recvBytes(self.registry.listUsers(client.id)[0]['cert'])
             cert_recived = recvBytes(data["cert"])
 
-            if cert_stored = cert_recived:
+            if cert_stored == cert_recived:
                 data_error = {"login": "Just signed in", "result": client.id}
             else:
                 data_error = {"error": "You are not who you say you are :) Get Rekt m8"}
