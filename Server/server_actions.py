@@ -419,7 +419,7 @@ class ServerActions:
                 valido = client.clientCertificate.validate_signature(json.dumps(data["payload"], sort_keys =True), ourCrypto.recvBytes(data["signed"]))
 
             except Exception as e:
-                
+                print(e)
                 payload = {"error" : "Client invalid certificate", "randomID" :data["payload"]["randomID"]}
                 client.sendResult(client.certServe.generate(payload))
                 return

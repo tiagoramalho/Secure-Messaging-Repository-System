@@ -346,13 +346,20 @@ class Certificate(object):
             ))
         builder = OCSPRequestBuilder(subject_cert, issuer_cert)
         ocsp_request = builder.build()
-        r = requests.post(
-            ocsp_link,
-            data = ocsp_request.dump(),
-            headers={"Content-Type": "application/ocsp-request"}
-        )
 
-        resposta = asn1crypto.ocsp.OCSPResponse.load(r.content)
+        flag = False
+
+        for x in range(1,3):
+            try:
+                r = requests.post(
+                ocsp_link,
+                data = ocsp_request.dump(),
+                headers={"Content-Type": "application/ocsp-request"}
+                )
+                resposta = asn1crypto.ocsp.OCSPResponse.load(r.content)
+                break
+            except Exception as e:
+                print("failed OCSP {0} times".format(x))
 
         return "good" == resposta['response_bytes']['response'].parsed['tbs_response_data']["responses"][0]["cert_status"].name
 

@@ -4,3 +4,6 @@ Client/clients/*
 Server/mboxes/*
 Server/receipts/*
 venv
+
+
+**/*.swp
