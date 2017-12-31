@@ -71,7 +71,7 @@ class Asy_Cyphers(object):
 
             pw = pw if pw != None else None 
             keys = crypto.PKey()
-            keys.generate_key(crypto.TYPE_RSA, 4096)
+            keys.generate_key(crypto.TYPE_RSA, 2048)
             self.save_keys(keys, pw)
 
             self.private_key = keys.to_cryptography_key()
