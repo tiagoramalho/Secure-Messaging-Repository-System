@@ -22,6 +22,8 @@ from pkcs11 import Attribute, ObjectClass
 from pkcs11.exceptions import TokenNotPresent
 from pkcs11.exceptions import NoSuchToken
 from pkcs11.exceptions import PinIncorrect
+from pkcs11.exceptions import PKCS11Error
+
 from pkcs11.util.x509 import decode_x509_certificate
 
 import pkcs11
@@ -439,7 +441,10 @@ class CC_Interaction(object):
             print("Please insert the Citizen Card!\nExiting...")
             sys.exit(-1)
         except (PinIncorrect):
-            print("Incorrect Pin!\nExiting...")
+            print("\nExiting...")
+            sys.exit(-1)
+        except (PKCS11Error):
+            print("Invalid PIN!\nExiting...")
             sys.exit(-1)
         except Exception as e:
             raise e
