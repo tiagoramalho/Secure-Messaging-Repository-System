@@ -355,7 +355,7 @@ class ServerActions:
 
         fromId = int(data["id"])
         msg = get_bytes(base64.b64decode(data['msg']))
-        receipt = str(data['receipt'])
+        receipt = str("\n".join([data['receipt'], data['date']]))
 
         if not self.registry.messageWasRed(str(fromId), msg):
             log(logging.ERROR, "Unknown, or not yet red, message for \"receipt\" request " + json.dumps(data))

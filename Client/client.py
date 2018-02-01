@@ -9,7 +9,9 @@ from os import path
 import sys
 import base64
 
-from datetime import date
+from datetime import datetime
+import time
+
 #---------------------------------------------- 
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.backends import default_backend
@@ -121,6 +123,7 @@ class Client(object):
                     'publicKey' : self.AsyCypher.getPub(),
                     'cert' : self.cc.cert.dump_certificate(),
                     'subject_name' : self.cc.cert.get_subject(),
+
                     #'randomId': msgID
                   }
         
@@ -301,8 +304,10 @@ class Client(object):
 
         signature = self.cc.sign(msg)
 
-        text = self.AsyCypher.cyph(bytes(msg, 'utf-8'), public_key = list_result["publicKey"])
-        copy = self.AsyCypher.cyph(bytes(msg, 'utf-8'))
+        padd = os.urandom(32) # padding
+
+        text = self.AsyCypher.cyph(bytes(msg, 'utf-8'), public_key = list_result["publicKey"], padd=padd)
+        copy = self.AsyCypher.cyph(bytes(msg, 'utf-8'), padd=padd)
 
         payload = { 'type'	: 'send', 
                     'src'	: self.id,
@@ -359,10 +364,10 @@ class Client(object):
         else:
             intermidiate_data = response["payload"][1].split(bytes("\n", "utf-8"))
 
-            plaintext = self.AsyCypher.decyph(intermidiate_data[0])
+            plaintext, padd = self.AsyCypher.decyph(intermidiate_data[0])
             log_success("\nMessage: %s \n" %str(plaintext.decode(ENCODING)))
 
-            self.Receipt(box, plaintext.decode(ENCODING))
+            self.Receipt(box, plaintext.decode(ENCODING) + "\n" + sendBytes(padd))
 
                 
 
@@ -373,12 +378,22 @@ class Client(object):
 
         log_info("Sending receipt for message number %s " % str(box))
 
+
+        date = str(int(time.mktime(datetime.utcnow().timetuple())))
+        print(sendBytes(date))
+        print(type(date))
+
+        msg = msg + "\n" + sendBytes(date)
+
+
         signature = self.cc.sign(msg)
 
         payload = { 'type'		: 'receipt', 
                     'id'		: self.id,  
                     'msg'		: str(box),
-                    'receipt'	: signature  # hint: Não é ;) 
+                    'receipt'	: signature,
+                    'date'      : date,
+
                   }
 
         payload = load_payload(payload)
@@ -455,20 +470,33 @@ class Client(object):
                 if validoCert:
                     intermidiate_data = msg.split(bytes("\n", "utf-8"))
 
-                    plaintext = self.AsyCypher.decyph(intermidiate_data[0])
+                    plaintext, padd = self.AsyCypher.decyph(intermidiate_data[0])
                     try:
-                        signature = recvBytes(x["receipt"].decode(ENCODING))
-                        plaintext = plaintext.decode(ENCODING)
+                        receipt_splited = x["receipt"].split(bytes("\n", "utf-8"))
+                        
+
+                        time_to_validate = time.gmtime(float(recvBytes(receipt_splited[1].decode(ENCODING))))
+
+                        print(time_to_validate)
+                        print(type(time_to_validate))
+
+                        time_to_validate = datetime.fromtimestamp(time.mktime(time_to_validate))
+
+                        print(time_to_validate)
+                        print(type(time_to_validate))
+
+                        signature = recvBytes(receipt_splited[0].decode(ENCODING))
+                        plaintext = plaintext.decode(ENCODING) + "\n" + sendBytes(padd) + "\n" + receipt_splited[1].decode(ENCODING)
                         log_info("Validating receipt\n")
-                        valido = self.certCertificate.validate_signature(plaintext, signature)
+                        valido = self.certCertificate.validate_signature(plaintext, signature, time_to_validate = time_to_validate)
                     except Exception as e:
-                        pass
+                        raise e
 
                     if valido:
                         valido = False
-                        log_success("Authenticated receipt. ID-%s Date-%s \n" % (str(x["id"].decode(ENCODING)), str(date.fromtimestamp(int(x["date"].decode(ENCODING))/1000))))
+                        log_success("Authenticated receipt. ID-%s Date-%s \n" % (str(x["id"].decode(ENCODING)), str(datetime.fromtimestamp(int(recvBytes(receipt_splited[1].decode(ENCODING)))))))
                     else:
-                        log_error("Unauthenticated receipt. ID-%s Date-%s \n" % (str(x["id"].decode(ENCODING)), str(date.fromtimestamp(int(x["date"].decode(ENCODING))/1000))))
+                        log_error("Unauthenticated receipt. ID-%s Date-%s \n" % (str(x["id"].decode(ENCODING)), str(datetime.fromtimestamp(int(recvBytes(receipt_splited[1].decode(ENCODING)))))))
                 else:
                     log_error("Information in the description is not reliable \n")
 
@@ -485,8 +513,8 @@ def menu():
     print("4 - List ALL messages in message box")
     print("5 - SEND a message to a message box")
     print("6 - RECEIV a specific message from a message box")
-    print("7 - Send a message RECEIPT")
-    print("8 - Check for message reception STATUS")
+    # print("7 - Send a message RECEIPT")
+    print("7 - Check for message reception STATUS")
     print("0 - EXIT")
 
 
@@ -561,25 +589,8 @@ if __name__ == "__main__":
                 box = "_"+box
                 client.Recv(box)
 
-            
-
 
         elif x == 7:
-            sender = get_int(question = "Sender User ID? ")
-            if sender == None:
-                log_error("Invalid Value\n")
-
-            boxId = get_int(question = "Message ID? ")
-            if boxId == None:
-                log_error("Invalid Value\n")
-
-
-            box = str(sender) + "_" + str(boxId)
-
-            msg = str(input("Write the reading message? "))
-            client.Receipt(box, msg)
-
-        elif x == 8:
             sender = get_int(question = "Receiver User ID? ")
             if sender == None:
                 log_error("Invalid Value\n")
@@ -603,3 +614,23 @@ if __name__ == "__main__":
     print("byee :) ")
 
 
+
+
+
+
+'''
+elif x == 7:
+    sender = get_int(question = "Sender User ID? ")
+    if sender == None:
+        log_error("Invalid Value\n")
+
+    boxId = get_int(question = "Message ID? ")
+    if boxId == None:
+        log_error("Invalid Value\n")
+
+
+    box = str(sender) + "_" + str(boxId)
+
+    msg = str(input("Write the reading message? "))
+    client.Receipt(box, msg)
+'''

@@ -109,7 +109,7 @@ class Asy_Cyphers(object):
         private_file.close()
         pub_file.close()
 
-    def cyph(self, txt, public_key=None):
+    def cyph(self, txt, public_key=None, padd=None):
         # Kpub  -> pertence a todos
         # kpriv -> pertence ao dono
         # T     -> texto
@@ -125,9 +125,11 @@ class Asy_Cyphers(object):
         cypheredText = sym_cypher.cyph_text(txt)
         key = sym_cypher.key
         iv = sym_cypher.iv
-        padd = os.urandom(32) # padding
-        # ks a baixo  = ks + dados
 
+        if not padd:
+            padd = os.urandom(32) # padding
+        
+        # ks a baixo  = ks + dados
         ks = {"padding": padd, "iv": iv, "key": key}
 
         if public_key:
@@ -167,6 +169,7 @@ class Asy_Cyphers(object):
         
         ks = loads(ks)
 
+        padd = ks.get("padding")
         ivUsed = ks.get("iv")
         keyUsed = ks.get("key")
 
@@ -178,7 +181,7 @@ class Asy_Cyphers(object):
                                 iv = ivUsed)
 
         plainText = sym_cypher.decyph_text(ciphered_text)
-        return plainText
+        return plainText, padd
 
 
 if __name__ == "__main__":

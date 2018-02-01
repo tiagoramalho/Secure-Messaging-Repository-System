@@ -83,7 +83,7 @@ class Certificate(object):
 
 
     # Ver se significado inválido
-    def validate_signature(self, data, signature, is_client_cert = True):
+    def validate_signature(self, data, signature, is_client_cert = True, time_to_validate = None):
         if test_internet_on() and not Certificate.crls_updated:
             #self.get_all_crls()             #Updating crl's
             pass
@@ -113,10 +113,11 @@ class Certificate(object):
             if test_internet_on():
                 if False in [self.ocsp_validation(x[0], x[1]) for x in ocsp_list]:
                     raise NameError('Certificate invalid: OCSP verification')
-                self.verify_certificate_chain(self.certificate, chain, crl_list)
+                self.verify_certificate_chain(self.certificate, chain, crl_list, datetime = time_to_validate)
 
-            else: 
-                self.verify_certificate_chain(self.certificate, chain, all_crl_list)
+            else:
+                self.verify_certificate_chain(self.certificate, chain, all_crl_list, datetime = time_to_validate)
+
 
             verification = crypto.verify(self.certificate, signature, data, "sha256")
             return True
@@ -126,7 +127,7 @@ class Certificate(object):
 
 
     # Verifica a cadeia de certificação mas não vê se foi revogado.
-    def verify_certificate_chain(self, cert, chain, crl_list):
+    def verify_certificate_chain(self, cert, chain, crl_list, datetime):
         crl_list = self.crl_files_to_objects(crl_list)
         certificate = cert
 
@@ -141,7 +142,13 @@ class Certificate(object):
             for crl in crl_list:
                 store.add_crl(crl)
 
+
+            if datetime:
+                store.set_time(datetime)
+
             store_ctx = crypto.X509StoreContext(store, certificate)
+
+
 
             store_ctx.verify_certificate()
 
@@ -515,7 +522,7 @@ if __name__ == '__main__':
 
     cert = Certificate(cc.get_my_cert())
 
-    data = "ganda lol ho ganda fdp"
+    data = "ganda lol"
 
     signature = cc.sign(data)
 
