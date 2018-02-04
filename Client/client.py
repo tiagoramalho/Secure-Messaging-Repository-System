@@ -10,6 +10,8 @@ import sys
 import base64
 
 from datetime import datetime
+from datetime import date
+
 import time
 
 #---------------------------------------------- 
@@ -380,8 +382,6 @@ class Client(object):
 
 
         date = str(int(time.mktime(datetime.utcnow().timetuple())))
-        print(sendBytes(date))
-        print(type(date))
 
         msg = msg + "\n" + sendBytes(date)
 
@@ -474,36 +474,22 @@ class Client(object):
                     try:
                         receipt_splited = x["receipt"].split(bytes("\n", "utf-8"))
                         
-
                         time_to_validate = time.gmtime(float(recvBytes(receipt_splited[1].decode(ENCODING))))
-
-                        print(time_to_validate)
-                        print(type(time_to_validate))
-
                         time_to_validate = datetime.fromtimestamp(time.mktime(time_to_validate))
-
-                        print(time_to_validate)
-                        print(type(time_to_validate))
 
                         signature = recvBytes(receipt_splited[0].decode(ENCODING))
                         plaintext = plaintext.decode(ENCODING) + "\n" + sendBytes(padd) + "\n" + receipt_splited[1].decode(ENCODING)
-                        log_info("Validating receipt\n")
                         valido = self.certCertificate.validate_signature(plaintext, signature, time_to_validate = time_to_validate)
                     except Exception as e:
                         raise e
 
                     if valido:
                         valido = False
-                        log_success("Authenticated receipt. ID-%s Date-%s \n" % (str(x["id"].decode(ENCODING)), str(datetime.fromtimestamp(int(recvBytes(receipt_splited[1].decode(ENCODING)))))))
+                        log_success("Authenticated receipt. ID-%s\nClient_Date-%s\nServer_Date-%s \n" % (str(x["id"].decode(ENCODING)), str(datetime.fromtimestamp(int(recvBytes(receipt_splited[1].decode(ENCODING))))), str(datetime.fromtimestamp(int(int(x["date"].decode(ENCODING))/1000)))))
                     else:
-                        log_error("Unauthenticated receipt. ID-%s Date-%s \n" % (str(x["id"].decode(ENCODING)), str(datetime.fromtimestamp(int(recvBytes(receipt_splited[1].decode(ENCODING)))))))
+                        log_error("Unauthenticated receipt. ID-%s\nClient_Date-%s\nServer_Date-%s \n" % (str(x["id"].decode(ENCODING)), str(datetime.fromtimestamp(int(recvBytes(receipt_splited[1].decode(ENCODING))))), str(datetime.fromtimestamp(int(int(x["date"].decode(ENCODING))/1000)))))
                 else:
                     log_error("Information in the description is not reliable \n")
-
-                
-
-
-
 
 def menu():
     print("\nChoose an option: ")
